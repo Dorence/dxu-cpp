@@ -1,0 +1,23 @@
+# Complete list of style options can be found at: 
+# https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+---
+BasedOnStyle: Google
+AlignTrailingComments: true
+AllowAllParametersOfDeclarationOnNextLine: true
+ColumnLimit: 80
+DerivePointerAlignment: false
+# (v>=16) Insert a newline at end of file if missing.
+InsertNewlineAtEOF: true
+PointerAlignment: Left
+SortIncludes: true
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInContainerLiterals: true
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false

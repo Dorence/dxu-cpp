@@ -1,0 +1,20 @@
+#ifndef DXU_DEFINE_H
+#define DXU_DEFINE_H
+
+#cmakedefine DXU_NAMESPACE @DXU_NAMESPACE@
+
+// [feature] std::format
+#cmakedefine SUPPORT_FORMAT
+// [feature] std::string_view
+#cmakedefine SUPPORT_STRING_VIEW
+// [feature] __thread
+#cmakedefine SUPPORT_THREAD_LOCAL
+
+#cmakedefine CMAKE_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
+#cmakedefine01 CMAKE_BUILD_TYPE_DEBUG
+#cmakedefine01 CMAKE_BUILD_TYPE_RELWITHDEBINFO
+#cmakedefine01 CMAKE_BUILD_TYPE_RELEASE
+
+#cmakedefine WITH_ASAN
+
+#endif  // DXU_DEFINE_H
