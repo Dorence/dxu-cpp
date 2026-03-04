@@ -4,6 +4,7 @@
  * - remove_prefix / remove_suffix
  * - starts_with / ends_with
  * - trim / trim_start / trim_end
+ * - strip / strip_start / strip_end
  */
 
 #include "dxu/slice.h"
@@ -64,5 +65,17 @@ TEST_CASE("Slice::Trim") {
   s.remove_prefix_s(3);
   REQUIRE(s.trim() == "ello");
 }
+
+TEST_CASE("Slice::Strip") {
+  Slice s("  hello  \t");
+  REQUIRE(s.strip(" \t") == "hello");
+  REQUIRE(s.strip(" ") == "hello  \t");
+  REQUIRE(s.strip("\t") == "  hello  ");
+  REQUIRE(s.strip_start(" he") == "llo  \t");
+  REQUIRE(s.strip_end(" \t") == "  hello");
+
+  REQUIRE(s.strip("\n\r") == s);
+  REQUIRE(s.strip(" \thelo").empty());
+};
 
 }  // namespace DXU_NAMESPACE

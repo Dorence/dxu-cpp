@@ -8,7 +8,7 @@ if(NOT Catch2_FOUND)
   ExternalProject_Add(
     catch2_project
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG v3.10.0
+    GIT_TAG v3.13.0
     GIT_SHALLOW ON
     GIT_CONFIG ${EXTPROJ_GIT_CONFIG}
     PREFIX ${CATCH2_DIR}
@@ -20,8 +20,9 @@ if(NOT Catch2_FOUND)
       -DCATCH_INSTALL_EXTRAS=ON
       -DCATCH_BUILD_TESTING=OFF
     CMAKE_CACHE_ARGS
-      -DCMAKE_CXX_FLAGS:STRING=-std=c++14
+      -DCMAKE_CXX_FLAGS:STRING=
       -DCMAKE_C_FLAGS:STRING=
+      -DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD}
     EXCLUDE_FROM_ALL ON # build on demand
     UPDATE_COMMAND ""   # disable rebuild
   )

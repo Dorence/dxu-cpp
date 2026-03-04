@@ -43,6 +43,27 @@ TEST_CASE("Slice::Empty") {
   REQUIRE(s.valid());
 };
 
+TEST_CASE("Slice::Access") {
+  Slice s("ablablablaz");
+  REQUIRE((s.valid() && !s.empty()));
+  REQUIRE(s[0] == 'a');
+  REQUIRE(s[1] == 'b');
+  REQUIRE(s.data()[2] == 'l');
+  REQUIRE(s.data()[s.size() - 1] == 'z');
+}
+
+TEST_CASE("Slice::Compare") {
+  Slice s("gold");
+  REQUIRE(s.compare("gold") == 0);
+  REQUIRE(s.compare("golds") < 0);
+  REQUIRE(s.compare("hold") < 0);
+  REQUIRE(s.compare("silver") < 0);
+  REQUIRE(s.compare("") > 0);
+  REQUIRE(s.compare("aluminum") > 0);
+  REQUIRE(s.compare("go") > 0);
+  REQUIRE(s.compare("goal") > 0);
+};
+
 TEST_CASE("Slice::Equals") {
   Slice s("123456");
   REQUIRE(s == "123456");
@@ -56,6 +77,11 @@ TEST_CASE("Slice::ToString") {
   std::string s = "123456";
   REQUIRE(s == Slice(s).ToString());
   REQUIRE(Slice(s).ToString(true) == "313233343536");
+
+#ifdef SUPPORT_STRING_VIEW
+  constexpr std::string_view sv = "i_am_a_string_view";
+  REQUIRE(sv == Slice(sv).ToStringView());
+#endif  // SUPPORT_STRING_VIEW
 };
 
 TEST_CASE("Slice::DecodeHex") {

@@ -1,53 +1,66 @@
 #ifndef DXU_CONVERSION_H_INCLUDE
 #define DXU_CONVERSION_H_INCLUDE
 
-#include <cassert>
-#include <cerrno>
-#include <cstdlib>
-#include <sstream>
 #include <string>
 #include <type_traits>
 #include <vector>
 
-#include "dxu/version.h"
+#include "dxu/slice.h"
 
 namespace DXU_NAMESPACE {
 
-// remove ' ' and '\t' from both ends
-void TrimString(std::string& str);
+struct StrToIntOptions {
+  int* err = nullptr;  // address to store error code
+  int base = 0;        // 0 (auto), 2-36
+  bool trim = true;    // trim before parse
+  bool strict = true;  // no trailing content, etc.
 
-// any invalid format causes error
-int StrToIntSafe(const char* str, int32_t& result, const int& base = 0);
+  StrToIntOptions() noexcept = default;
+  StrToIntOptions(int* err) noexcept : err(err) {}
+  StrToIntOptions(int* err, int base, bool trim, bool strict)
+      : err(err), base(base), trim(trim), strict(strict) {}
+};
 
-// any invalid format causes error
-int StrToInt64Safe(const char* str, int64_t& result, const int& base = 0);
+// wrapper for std::strtol, return 0 if error
+int32_t StrToInt(const Slice& s, const StrToIntOptions& opts = {}) noexcept;
 
-// @warn str trims ending in-place
-int StrToIntWithTrim(std::string& str, int32_t& result, size_t front = 0);
+// wrapper for std::strtoll, return 0 if error
+int64_t StrToInt64(const Slice& s, const StrToIntOptions& opts = {}) noexcept;
 
-// @warn str trims ending in-place
-int StrToInt64WithTrim(std::string& str, int64_t& result, size_t front = 0);
+struct StrToIntPairOptions {
+  int* err = nullptr;  // address to store error code
+  int base = 0;        // 0 (auto), 2-36
+  char sep = ':';      // seperator in "a:b"
+};
 
-// parse "a:b", @warn str trims ending in-place
-int StrToInt32PairWithTrim(std::string& str,
-                           std::pair<int32_t, int32_t>& result,
-                           size_t front = 0, const char& sep = ':');
+// parse "a:b", return {0, 0} if error
+std::pair<int32_t, int32_t> StrToIntPair(
+    const Slice& s, const StrToIntPairOptions& opts = {}) noexcept;
 
 enum BytesUnit : uint8_t { SizeByte, SizeKB, SizeMB, SizeGB, SizeTB, SizePB };
 
 // size <= 7 (16384PB)
 BytesUnit HumanReadableBytes(uint64_t bytes, std::string& result);
 
+struct StringToVectorIntOptions {
+  int* err = nullptr;  // address to store error code
+  int base = 0;        // 0 (auto), 2-36
+  char sep = ',';      // seperator "1,2,3"
+  char repeat = '*';   // repeat mark "1*3"
+  char range = '-';    // range mark "0-9"
+};
+
 /**
  * Features:
- * - Accepts spaces ' ' and trailing ',': `"0  ,  0,0,"` -> [0, 0, 0]
+ * - Accepts spaces ' ' or '\t' and trailing sep ',': `"0  ,  0,0,"` -> [0, 0,
+ * 0]
  * - '*' for repeat: `"1*3,8,-8,4*2"` -> [1, 1, 1, 8, -8, 4, 4]
  * - '-' for range:  `"1-3,0,2--1"` -> [1, 2, 3, 0, 2, 1, 0, -1]
  * - Custom seperator: `"1 2 3" (sep=' ')` -> [1, 2, 3]
- *   If sep is `' '`, doesn't accept continued space: `"1  2"` -> [1] (err>0)
+ * Returns partial result if error.
  */
-std::vector<int> StringToVectorInt(const std::string& str, int* err = nullptr,
-                                   const char& sep = ',');
+std::vector<int> StringToVectorInt(
+    const Slice& s, const StringToVectorIntOptions& opts = {}) noexcept;
 
 namespace detail {
 template <class T>
@@ -90,101 +103,130 @@ std::string VectorToString(const std::vector<T>& vec,
 
 #endif  // DXU_CONVERSION_H_INCLUDE
 #ifdef DXU_CONVERSION_IMPLEMENTATION
+#ifndef DXU_CONVERSION_H_IMPL
+#define DXU_CONVERSION_H_IMPL
+
+#include <cassert>
+#include <cerrno>
 
 namespace DXU_NAMESPACE {
 
 namespace {
-// Should set front to begging position.
-// Returns last not of blank chars.
-static size_t StringTrim(std::string& str, size_t& front) {
-  static char kBlanks[] = " \t";  // std::isblank
-  front = str.find_first_not_of(kBlanks, front);
-  if (front == std::string::npos) {
-    return std::string::npos;  // all blanks
-  }
-  size_t back = str.find_last_not_of(kBlanks);
-  if (back + 1 < str.size()) {
-    str[back + 1] = '\0';  // trim ending
-  }
-  return back;
+inline int StrToIntPreCheck(Slice& s, bool need_trim) noexcept {
+  if (!s.valid()) return EADDRNOTAVAIL;
+  if (need_trim) s = s.trim();
+  return s.empty() ? EINVAL : 0;
 }
+
+inline int StrToIntPostCheck(const char* start, const char* end, int err,
+                             bool strict) noexcept {
+  if (err) return err;
+  if (end == nullptr || end == start) return EINVAL;
+  if (strict && *end != '\0') return EILSEQ;
+  return 0;
+}
+
+inline int StrToIntEat32(Slice& s, int32_t& num,
+                         const StrToIntOptions& opts) noexcept {
+  std::string str = s.ToString();  // copy to avoid non-zero-terminated
+  char* end = nullptr;
+  errno = 0;  // clear errno
+  auto result = std::strtol(str.c_str(), &end, opts.base);
+  int err = StrToIntPostCheck(str.c_str(), end, errno, opts.strict);
+  if (err == 0) {
+    num = static_cast<int32_t>(result);
+    s.remove_prefix(end - str.c_str());
+  }
+  return err;
+}
+
+inline int StrToIntEat64(Slice& s, int64_t& num,
+                         const StrToIntOptions& opts) noexcept {
+  std::string str = s.ToString();  // copy to avoid non-zero-terminated
+  char* end = nullptr;
+  errno = 0;  // clear errno
+  auto result = std::strtoll(str.c_str(), &end, opts.base);
+  int err = StrToIntPostCheck(str.c_str(), end, errno, opts.strict);
+  if (err == 0) {
+    num = static_cast<int64_t>(result);
+    s.remove_prefix(end - str.c_str());
+  }
+  return err;
+}
+
+class SliceSplitter {
+ public:
+  constexpr SliceSplitter(const Slice& s, const char sep)
+      : s_(s.valid() ? s : Slice()), sep_(sep) {}
+
+  constexpr Slice Next() {
+    if (s_.empty()) return Slice::Invalid();  // done
+    Slice res{s_};
+    size_t pos = s_.find(sep_);
+    if (pos == Slice::npos) {
+      s_.clear();  // the last part
+    } else {
+      res = s_.substr(0, pos);    // pos in [0, size)
+      s_.remove_prefix(pos + 1);  // advance to next part
+    }
+    return res;
+  }
+
+  constexpr void Shift(size_t offset) { s_.remove_prefix_s(offset); }
+
+ private:
+  Slice s_;
+  const char sep_;
+};
 }  // namespace
 
-void TrimString(std::string& str) {
-  size_t front = 0;
-  size_t back = StringTrim(str, front);
-  if (back == std::string::npos) {
-    str.clear();  // all blanks
-  } else {
-    assert(front <= back);
-    str = str.substr(front, back - front + 1);
-  }
+int32_t StrToInt(const Slice& _s, const StrToIntOptions& opts) noexcept {
+  Slice s{_s};
+  int err = StrToIntPreCheck(s, opts.trim);
+  int32_t num = 0;
+  if (err == 0) err = StrToIntEat32(s, num, opts);
+  if (opts.err != nullptr) *opts.err = err;
+  return num;
 }
 
-// any invalid format causes error
-int StrToIntSafe(const char* str, int32_t& result, const int& base) {
-  if (str == nullptr) return EADDRNOTAVAIL;
-  char* end = nullptr;
-  errno = 0;  // clear errno
-  long num = std::strtol(str, &end, base);
-  int err = errno;
-  if (err) return err;
-  if (end == nullptr || end == str) return EINVAL;
-  if (*end != '\0') return EILSEQ;
-  result = static_cast<int32_t>(num);
-  return 0;
+int64_t StrToInt64(const Slice& _s, const StrToIntOptions& opts) noexcept {
+  Slice s{_s};
+  int err = StrToIntPreCheck(s, opts.trim);
+  int64_t num = 0;
+  if (err == 0) err = StrToIntEat64(s, num, opts);
+  if (opts.err != nullptr) *opts.err = err;
+  return num;
 }
 
-// any invalid format causes error
-int StrToInt64Safe(const char* str, int64_t& result, const int& base) {
-  if (str == nullptr) return EADDRNOTAVAIL;
-  char* end = nullptr;
-  errno = 0;  // clear errno
-  long long num = std::strtoll(str, &end, base);
-  int err = errno;
-  if (err) return err;
-  if (end == nullptr || end == str) return EINVAL;
-  if (*end != '\0') return EILSEQ;
-  result = static_cast<int>(num);
-  return 0;
-}
-
-// @warn str trims ending in-place
-int StrToIntWithTrim(std::string& str, int32_t& result, size_t front) {
-  StringTrim(str, front);
-  if (front == std::string::npos) {
-    return EILSEQ;  // all blanks
+std::pair<int32_t, int32_t> StrToIntPair(
+    const Slice& _s, const StrToIntPairOptions& opts) noexcept {
+  int err = 0;
+  int n1 = 0;
+  int n2 = 0;
+  if (!_s.valid()) err = EADDRNOTAVAIL;
+  while (err == 0) {
+    Slice s = _s.trim();
+    if (s.empty()) {
+      err = EILSEQ;  // all blanks
+      break;
+    }
+    size_t pos = s.find(opts.sep);
+    if (pos == Slice::npos || pos == 0 || pos == s.size() - 1) {
+      err = EILSEQ;  // no separator or part
+      break;
+    }
+    StrToIntOptions opts2{nullptr, opts.base, false, true};
+    Slice s1 = s.substr(0, pos).trim_end();
+    assert(!s1.empty());  // should not be empty
+    err = StrToIntEat32(s1, n1, opts2);
+    if (err != 0) break;
+    Slice s2 = s.substr(pos + 1).trim_start();
+    assert(!s2.empty());  // should not be empty
+    err = StrToIntEat32(s2, n2, opts2);
+    break;
   }
-  return StrToIntSafe(str.c_str() + front, result);
-}
-
-// @warn str trims ending in-place
-int StrToInt64WithTrim(std::string& str, int64_t& result, size_t front) {
-  StringTrim(str, front);
-  if (front == std::string::npos) {
-    return EILSEQ;  // all blanks
-  }
-  return StrToInt64Safe(str.c_str() + front, result);
-}
-
-// parse "a:b", @warn str trims ending in-place
-int StrToInt32PairWithTrim(std::string& str,
-                           std::pair<int32_t, int32_t>& result, size_t front,
-                           const char& sep) {
-  auto back = StringTrim(str, front);
-  if (front == std::string::npos) {
-    return EILSEQ;  // all blanks
-  }
-  size_t pos = str.find(sep, front);
-  if (pos == std::string::npos || pos == front || pos == back) {
-    return EILSEQ;  // no separator or part
-  }
-  str[pos] = '\0';
-  int err = StrToIntSafe(str.c_str() + front, result.first);
-  if (err) return err;
-  err = StrToIntSafe(str.c_str() + pos + 1, result.second);
-  if (err) return err;
-  return 0;
+  if (opts.err != nullptr) *opts.err = err;
+  return {n1, n2};
 }
 
 BytesUnit HumanReadableBytes(uint64_t bytes, std::string& result) {
@@ -213,67 +255,95 @@ BytesUnit HumanReadableBytes(uint64_t bytes, std::string& result) {
   return static_cast<BytesUnit>(unit);
 }
 
-std::vector<int> StringToVectorInt(const std::string& str, int* err,
-                                   const char& sep) {
-  static char kBlanks[] = " \t";  // std::isblank
+std::vector<int> StringToVectorInt(
+    const Slice& _s, const StringToVectorIntOptions& opts) noexcept {
+  static const char kBlanks[] = " \t";  // std::isblank
+  constexpr Slice kSliceBlanks{kBlanks, 2};
   std::vector<int> result;
-  // accept trailing ','
-  std::istringstream ss(str.back() == sep ? str.substr(0, str.size() - 1)
-                                          : str);
-  std::string num_str;
-  int e = 0;
-  while (std::getline(ss, num_str, sep)) {
-    // printf("\"%s\" ", num_str.c_str());
-    size_t front = num_str.find_first_not_of(kBlanks);
-    if (front == std::string::npos) {
-      e = EILSEQ;  // all blanks
+  if (!_s.valid()) {
+    if (opts.err != nullptr) *opts.err = EADDRNOTAVAIL;
+    return result;
+  }
+  if (opts.range == opts.repeat || opts.sep == opts.repeat ||
+      opts.range == opts.sep) {
+    if (opts.err != nullptr) *opts.err = EINVAL;
+    return result;
+  }
+  Slice s = _s.trim();
+  if (s.empty()) {
+    if (opts.err != nullptr) *opts.err = 0;  // empty array
+    return result;
+  }
+  const bool sep_is_blank = kSliceBlanks.contains(opts.sep);
+  if (!sep_is_blank && s[s.size() - 1] == opts.sep) {
+    s.remove_suffix(1);  // remove trailing ','
+  }
+  int err = 0;
+  StrToIntOptions opts2{nullptr, opts.base, false, true};
+  SliceSplitter splitter{s, opts.sep};
+  Slice str = splitter.Next();
+  for (; str.valid(); str = splitter.Next()) {
+    // printf("\"%s\" ", str.ToString().c_str());
+    if (str.empty()) {
+      if (sep_is_blank) {
+        size_t start = str.data() - s.data() + 1;  // index in full string
+        size_t n = start;
+        while (n < s.size() && s[n] == opts.sep) {
+          n++;
+        }
+        if (n > start) {
+          splitter.Shift(n - start);  // skip consecutive blanks
+        }
+        continue;
+      } else {
+        err = EILSEQ;  // repeated sep "1,,2"
+        break;
+      }
+    }
+    Slice num_str = str.trim();
+    if (num_str.empty()) {
+      err = EILSEQ;  // empty element
       break;
     }
     int num = 0;
     int repeat = 1;
     int end_num = 0;
-    size_t pos_repeat = num_str.find('*', front);
-    size_t pos_range = num_str.find('-', front);
-    if (pos_range == front) {
-      pos_range = num_str.find('-', front + 1);  // skip negative sign
+    size_t pos_repeat = num_str.find(opts.repeat);  // "a*b"
+    size_t pos_range = num_str.find(opts.range);    // "a-b"
+    if (opts.range == '-' && pos_range == 0) {
+      pos_range = num_str.find(opts.range, 1);  // maybe negative sign
     }
-    if (pos_repeat != std::string::npos && pos_range != std::string::npos) {
-      e = EINVAL;  // can't have both '*' and '-'
+    if (pos_repeat != Slice::npos && pos_range != Slice::npos) {
+      err = EILSEQ;  // can't have both '*' and '-'
       break;
     }
     // try parse repeat from "num*repeat"
-    if (pos_repeat != std::string::npos) {
-      e = StrToIntWithTrim(num_str, repeat, pos_repeat + 1);
-      if (e) {
-        break;
-      }
+    else if (pos_repeat != Slice::npos) {
+      Slice repeat_str = num_str.substr(pos_repeat + 1).trim_start();
+      err = StrToIntEat32(repeat_str, repeat, opts2);
+      if (err != 0) break;
       if (repeat <= 0) {
-        e = EINVAL;
+        err = EINVAL;
         break;
       }
-      num_str = num_str.substr(front, pos_repeat - front);
-      front = 0;
+      num_str = num_str.substr(0, pos_repeat).trim_end();
     }
     // try parse range from "num-end_num"
-    if (pos_range != std::string::npos) {
-      e = StrToIntWithTrim(num_str, end_num, pos_range + 1);
-      if (e) {
-        break;
-      }
-      num_str = num_str.substr(front, pos_range - front);
-      front = 0;
+    else if (pos_range != Slice::npos) {
+      Slice range_str = num_str.substr(pos_range + 1).trim_start();
+      err = StrToIntEat32(range_str, end_num, opts2);
+      if (err != 0) break;
+      num_str = num_str.substr(0, pos_range).trim_end();
     }
     // try parse "num"
-    e = StrToIntWithTrim(num_str, num, front);
-    if (e) {
-      break;
-    }
-    if (pos_repeat != std::string::npos && repeat > 1) {
+    err = StrToIntEat32(num_str, num, opts2);  // num_str is trimmed
+    if (err != 0) break;
+    if (pos_repeat != Slice::npos && repeat > 1) {
       result.reserve(result.size() + repeat);
       while (repeat--) {
         result.push_back(num);
       }
-    } else if (pos_range != std::string::npos && end_num != num) {
+    } else if (pos_range != Slice::npos && end_num != num) {
       int step = num < end_num ? 1 : -1;
       end_num += step;  // should include end_num
       result.reserve(result.size() + std::abs(end_num - num));
@@ -284,13 +354,11 @@ std::vector<int> StringToVectorInt(const std::string& str, int* err,
       result.push_back(num);
     }
   }
+  if (opts.err != nullptr) *opts.err = err;
   if (err) {
-    *err = e;
-  }
-  if (e) {
     fprintf(stderr, "[%s] parse error %d for: \"%s\", invalid \"%s\"\n",
-            __func__, e, str.c_str(), num_str.c_str());
-    // not to clear result, return partial result
+            __func__, err, _s.ToString().c_str(), str.ToString().c_str());
+    // dont clear result, return partial result
     // result.clear();
   }
   // result.shrink_to_fit();
@@ -299,4 +367,5 @@ std::vector<int> StringToVectorInt(const std::string& str, int* err,
 
 }  // namespace DXU_NAMESPACE
 
+#endif  // DXU_CONVERSION_H_IMPL
 #endif  // DXU_CONVERSION_IMPLEMENTATION
