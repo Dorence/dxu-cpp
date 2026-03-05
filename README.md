@@ -61,3 +61,5 @@ test/*_test
 
 #endif  // DXU_???_IMPLEMENTATION
 ```
+
+- `__INTELLISENSE__` is added to help VS/VSCode intellisense.

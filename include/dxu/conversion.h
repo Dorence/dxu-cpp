@@ -102,9 +102,7 @@ std::string VectorToString(const std::vector<T>& vec,
 }  // namespace DXU_NAMESPACE
 
 #endif  // DXU_CONVERSION_H_INCLUDE
-#ifdef DXU_CONVERSION_IMPLEMENTATION
-#ifndef DXU_CONVERSION_H_IMPL
-#define DXU_CONVERSION_H_IMPL
+#if defined(DXU_CONVERSION_IMPLEMENTATION) || defined(__INTELLISENSE__)
 
 #include <cassert>
 #include <cerrno>
@@ -367,5 +365,4 @@ std::vector<int> StringToVectorInt(
 
 }  // namespace DXU_NAMESPACE
 
-#endif  // DXU_CONVERSION_H_IMPL
 #endif  // DXU_CONVERSION_IMPLEMENTATION

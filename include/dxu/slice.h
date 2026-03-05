@@ -283,9 +283,7 @@ inline bool operator!=(const Slice& x, const Slice& y) noexcept {
 #undef RelConstexpr
 
 #endif  // DXU_SLICE_H_INCLUDE
-#ifdef DXU_SLICE_IMPLEMENTATION
-#ifndef DXU_SLICE_H_IMPL
-#define DXU_SLICE_H_IMPL
+#if defined(DXU_SLICE_IMPLEMENTATION) || defined(__INTELLISENSE__)
 
 #include <cctype>
 #include <cstring>
@@ -408,5 +406,4 @@ std::string Slice::to_upper_string() const noexcept {
 
 }  // namespace DXU_NAMESPACE
 
-#endif  // DXU_SLICE_H_IMPL
 #endif  // DXU_SLICE_IMPLEMENTATION
