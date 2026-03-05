@@ -166,7 +166,7 @@ class Slice {
     return npos;
   }
 
-  // constexpr size_t find(const Slice& s) const noexcept;
+  size_t find(const Slice& s, const size_t pos = 0) const noexcept;
 
   constexpr size_t rfind(const char c) const noexcept {
     if (valid() && !empty()) {
@@ -182,6 +182,8 @@ class Slice {
   constexpr bool contains(const char c) const noexcept {
     return find(c) != npos;
   }
+
+  bool contains(const Slice& s) const noexcept { return find(s) != npos; }
 
   constexpr size_t find_first_of(const Slice& s) const noexcept {
     if (valid() && s.valid() && !s.empty()) {
@@ -318,6 +320,19 @@ int Slice::compare(const Slice& b) const noexcept {
     }
   }
   return r;
+}
+
+size_t Slice::find(const Slice& s, const size_t pos) const noexcept {
+  if (valid() && s.valid()) {
+    if (s.empty()) return 0;
+    if (s.size_ + pos <= size_) {
+      size_t n = size_ - s.size_;
+      for (size_t i = pos; i <= n; ++i) {
+        if (0 == memcmp(data_ + i, s.data_, s.size_)) return i;
+      }
+    }
+  }
+  return npos;
 }
 
 namespace {
