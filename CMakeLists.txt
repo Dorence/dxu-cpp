@@ -17,7 +17,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "" OR CMAKE_BUILD_TYPE STREQUAL "RD")
 endif()
 message("[dxu] Build type: ${CMAKE_BUILD_TYPE}")
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/dxu-version.cmake)
 
 ##---- External Project Options ----##
 set(GIT_PROXY "http://sys-proxy-rd-relay.byted.org:8118" CACHE STRING "Github/Gitlab proxy")

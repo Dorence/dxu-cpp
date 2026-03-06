@@ -154,10 +154,10 @@ inline int StrToIntEat64(Slice& s, int64_t& num,
 
 class SliceSplitter {
  public:
-  constexpr SliceSplitter(const Slice& s, const char sep)
+  SliceSplitter(const Slice& s, const char sep) noexcept
       : s_(s.valid() ? s : Slice()), sep_(sep) {}
 
-  constexpr Slice Next() {
+  Slice Next() noexcept {
     if (s_.empty()) return Slice::Invalid();  // done
     Slice res{s_};
     size_t pos = s_.find(sep_);
@@ -170,7 +170,7 @@ class SliceSplitter {
     return res;
   }
 
-  constexpr void Shift(size_t offset) { s_.remove_prefix_s(offset); }
+  void Shift(size_t offset) noexcept { s_.remove_prefix_s(offset); }
 
  private:
   Slice s_;
@@ -221,6 +221,7 @@ std::pair<int32_t, int32_t> StrToIntPair(
     Slice s2 = s.substr(pos + 1).trim_start();
     assert(!s2.empty());  // should not be empty
     err = StrToIntEat32(s2, n2, opts2);
+    if (err != 0) n1 = 0;  // reset n1 if error
     break;
   }
   if (opts.err != nullptr) *opts.err = err;

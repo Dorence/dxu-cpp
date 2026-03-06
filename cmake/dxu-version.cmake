@@ -26,14 +26,13 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
   endif()
 endif()
 
-## Check system ablity
+## Check system ability
 include(CheckCXXSourceCompiles)
 
 CHECK_CXX_SOURCE_COMPILES("
 #include <format>
 int main() {
   std::string s = std::format(\"{}\", 42);
-  return 0;
 }
 " SUPPORT_FORMAT)
 
@@ -41,7 +40,6 @@ CHECK_CXX_SOURCE_COMPILES("
 #include <string_view>
 int main() {
   std::string_view sv = \"bronya\";
-  return 0;
 }
 " SUPPORT_STRING_VIEW)
 
@@ -50,8 +48,7 @@ CHECK_CXX_SOURCE_COMPILES("
 #define __thread __declspec(thread)
 #endif
 int main() {
-  static __thread int tls;
-  return 0;
+  static __thread int _tls;
 }
 " SUPPORT_THREAD_LOCAL)
 
