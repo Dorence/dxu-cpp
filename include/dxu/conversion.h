@@ -16,9 +16,9 @@ struct StrToIntOptions {
   bool strict = true;  // no trailing content, etc.
 
   StrToIntOptions() noexcept = default;
-  StrToIntOptions(int* err) noexcept : err(err) {}
-  StrToIntOptions(int* err, int base, bool trim, bool strict)
-      : err(err), base(base), trim(trim), strict(strict) {}
+  StrToIntOptions(int* _err) noexcept : err(_err) {}
+  StrToIntOptions(int* _err, int _base, bool _trim, bool _strict) noexcept
+      : err(_err), base(_base), trim(_trim), strict(_strict) {}
 };
 
 // wrapper for std::strtol, return 0 if error
@@ -31,6 +31,11 @@ struct StrToIntPairOptions {
   int* err = nullptr;  // address to store error code
   int base = 0;        // 0 (auto), 2-36
   char sep = ':';      // seperator in "a:b"
+
+  StrToIntPairOptions() noexcept = default;
+  StrToIntPairOptions(int* _err) noexcept : err(_err) {}
+  StrToIntPairOptions(int* _err, int _base, char _sep) noexcept
+      : err(_err), base(_base), sep(_sep) {}
 };
 
 // parse "a:b", return {0, 0} if error
@@ -48,6 +53,12 @@ struct StringToVectorIntOptions {
   char sep = ',';      // seperator "1,2,3"
   char repeat = '*';   // repeat mark "1*3"
   char range = '-';    // range mark "0-9"
+
+  StringToVectorIntOptions() noexcept = default;
+  StringToVectorIntOptions(int* _err) noexcept : err(_err) {}
+  StringToVectorIntOptions(int* _err, int _base, char _sep, char _repeat,
+                           char _range) noexcept
+      : err(_err), base(_base), sep(_sep), repeat(_repeat), range(_range) {}
 };
 
 /**

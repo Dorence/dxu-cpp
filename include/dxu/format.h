@@ -1,7 +1,8 @@
 #ifndef DXU_FORMAT_IMPLEMENTATION
 #define DXU_FORMAT_IMPLEMENTATION
 
-#include <cstring>
+#include <algorithm>  // std::reverse_copy
+#include <cstring>    // memcpy
 
 #include "dxu/version.h"
 

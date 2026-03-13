@@ -270,6 +270,16 @@ class Slice {
     static_assert(sizeof(*T::data_) == sizeof(*S::data_), "");
   };
 
+  // Constexpr convert slice-like S to T
+  template <class T, class S = Slice>
+  class ConstConverter {
+   public:
+    constexpr ConstConverter(const S& s) noexcept : s_(s) {}
+    constexpr operator T() const noexcept { return {s_.data_, s_.size_}; }
+    const S& s_;
+    static_assert(sizeof(*T::data_) == sizeof(*S::data_), "");
+  };
+
   const char* data_;
   size_t size_;
 };
