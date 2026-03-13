@@ -122,7 +122,7 @@ TEST_CASE("Conversion::StringToVectorIntAdvanced") {
     REQUIRE(result == expected);
     REQUIRE(err == 0);
   }
-}
+};
 
 TEST_CASE("Conversion::StringToVectorIntError") {
   using vint = std::vector<int>;
@@ -152,6 +152,6 @@ TEST_CASE("Conversion::StringToVectorIntError") {
   result = StringToVectorInt("12345\t0-2   -12345", opts);
   REQUIRE(err == EILSEQ);
   REQUIRE(result == (vint{12345}));
-}
+};
 
 }  // namespace DXU_NAMESPACE
