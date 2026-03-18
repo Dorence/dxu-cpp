@@ -110,6 +110,25 @@ std::string VectorToString(const std::vector<T>& vec,
   return r;
 }
 
+template <class T>
+std::string CArrayToString(const T* arr, const size_t n,
+                           const std::string& sep = ", ",
+                           const std::string& start = "[",
+                           const std::string& end = "]") {
+  constexpr size_t kMeanElementLength = 3;
+  std::string r;
+  r.reserve(start.size() + n * (sep.size() + kMeanElementLength) + end.size());
+  r += start;
+  for (size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      r += sep;
+    }
+    detail::VectorToStringFormat(r, arr[i]);
+  }
+  r += end;
+  return r;
+}
+
 }  // namespace DXU_NAMESPACE
 
 #endif  // DXU_CONVERSION_H_INCLUDE

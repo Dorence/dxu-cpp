@@ -1,20 +1,9 @@
 #include "dxu/conversion.h"
 
+#include "dxu/format.h"
 #include "test_common.h"
 
 namespace DXU_NAMESPACE {
-
-struct Point {
-  int x;
-  int y;
-};
-
-namespace detail {
-template <>
-inline void VectorToStringFormat(std::string& r, const Point& e) {
-  r += '(' + std::to_string(e.x) + ',' + std::to_string(e.y) + ')';
-}
-}  // namespace detail
 
 TEST_CASE("Conversion::StrToInt") {
   REQUIRE(StrToInt("123") == 123);
@@ -46,10 +35,46 @@ TEST_CASE("Conversion::VectorToString") {
           "[a, b, c]");
   REQUIRE(VectorToString(std::vector<std::string>{"a", "", "z"}, "\", \"",
                          "{\"", "\"}") == "{\"a\", \"\", \"z\"}");
+};
+
+struct Point {
+  int x;
+  int y;
+};
+
+struct DoubleQuotedString {
+  DoubleQuotedString(const std::string& s) : s(s) {}
+  const std::string& s;
+};
+
+namespace detail {
+template <>
+inline void VectorToStringFormat(std::string& r, const Point& e) {
+  r += '(' + std::to_string(e.x) + ',' + std::to_string(e.y) + ')';
+}
+
+template <>
+inline void VectorToStringFormat(std::string& r, const DoubleQuotedString& e) {
+  r += format::ToDoubleQuotedString(e.s);
+}
+}  // namespace detail
+
+TEST_CASE("Conversion::VectorToStringCustom") {
   // custom type
   REQUIRE(VectorToString(std::vector<Point>{{1, 2}, {3, 4}}) ==
           "[(1,2), (3,4)]");
-};
+  // double quoted string
+  std::vector<DoubleQuotedString> v{{"a"}, {""}, {"c"}, {"\""}};
+  REQUIRE(VectorToString(v) == "[\"a\", \"\", \"c\", \"\\\"\"]");
+}
+
+TEST_CASE("Conversion::CArrayToString") {
+  REQUIRE(CArrayToString((char*)nullptr, 0, ",", "{", "}") == "{}");
+  int arr[] = {1, 2, 3};
+  REQUIRE(CArrayToString(arr, 3) == "[1, 2, 3]");
+  std::string s[] = {"a\txxx", "", "e", "\""};
+  REQUIRE(CArrayToString(s, 4) == "[a\txxx, , e, \"]");
+}
 
 TEST_CASE("Conversion::StringToVectorInt") {
   using vint = std::vector<int>;
