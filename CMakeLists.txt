@@ -34,6 +34,7 @@ add_library(testlib STATIC test/test_common.cc)
 target_link_libraries(testlib PUBLIC dxu-cpp Catch2)
 
 add_custom_target(tests)
+
 aux_source_directory(test TEST_SRCS)
 foreach(TARGET_FILE ${TEST_SRCS})
   get_filename_component(TARGET ${TARGET_FILE} NAME_WE)
@@ -44,6 +45,17 @@ foreach(TARGET_FILE ${TEST_SRCS})
   target_link_libraries(${TARGET} PRIVATE testlib)
   set_target_properties(${TARGET} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test
+  )
+  add_dependencies(tests ${TARGET})
+endforeach()
+
+aux_source_directory(test/except TEST_EXCEPT_SRCS)
+foreach(TARGET_FILE ${TEST_EXCEPT_SRCS})
+  get_filename_component(TARGET ${TARGET_FILE} NAME_WE)
+  add_executable(${TARGET} ${TARGET_FILE})
+  target_link_libraries(${TARGET} PRIVATE testlib)
+  set_target_properties(${TARGET} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test/except
   )
   add_dependencies(tests ${TARGET})
 endforeach()

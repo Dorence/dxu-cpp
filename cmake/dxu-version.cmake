@@ -52,6 +52,12 @@ int main() {
 }
 " SUPPORT_THREAD_LOCAL)
 
+## Compiler specific options
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  # No warning for ##__VA_ARGS__
+  add_compile_options(-Wno-gnu-zero-variadic-macro-arguments) 
+endif()
+
 ## Check build type
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_BUILD_TYPE_DEBUG 1)
