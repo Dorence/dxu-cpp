@@ -20,6 +20,8 @@ int main(int argc, char* argv[]) {
       assert("case 2" == nullptr);
       break;
     case 3:
+    case 4:
+    case 5:
       release_assert_msg(false, "case %d failed", n_case);
       break;
     default:

@@ -21,7 +21,7 @@ TEST_CASE("Conversion::StrToInt") {
   REQUIRE(err == EILSEQ);
   REQUIRE(StrToInt("</>", opts) == 0);
   REQUIRE(err == EINVAL);
-};
+}
 
 TEST_CASE("Conversion::VectorToString") {
   REQUIRE(VectorToString(std::vector<int>{1, 2, 3}) == "[1, 2, 3]");
@@ -35,7 +35,7 @@ TEST_CASE("Conversion::VectorToString") {
           "[a, b, c]");
   REQUIRE(VectorToString(std::vector<std::string>{"a", "", "z"}, "\", \"",
                          "{\"", "\"}") == "{\"a\", \"\", \"z\"}");
-};
+}
 
 struct Point {
   int x;
@@ -104,7 +104,7 @@ TEST_CASE("Conversion::StringToVectorInt") {
   REQUIRE(result == (vint{-1, 0, 1, 2, 5, -1, -2, 1}));
   result = StringToVectorInt("12345, 0, -12345,-2 , 1 ");
   REQUIRE(result == (vint{12345, 0, -12345, -2, 1}));
-};
+}
 
 TEST_CASE("Conversion::StringToVectorIntAdvanced") {
   using vint = std::vector<int>;
@@ -147,7 +147,7 @@ TEST_CASE("Conversion::StringToVectorIntAdvanced") {
     REQUIRE(result == expected);
     REQUIRE(err == 0);
   }
-};
+}
 
 TEST_CASE("Conversion::StringToVectorIntError") {
   using vint = std::vector<int>;
@@ -177,6 +177,6 @@ TEST_CASE("Conversion::StringToVectorIntError") {
   result = StringToVectorInt("12345\t0-2   -12345", opts);
   REQUIRE(err == EILSEQ);
   REQUIRE(result == (vint{12345}));
-};
+}
 
 }  // namespace DXU_NAMESPACE

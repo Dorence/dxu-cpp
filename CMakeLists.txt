@@ -55,7 +55,7 @@ foreach(TARGET_FILE ${TEST_EXCEPT_SRCS})
   add_executable(${TARGET} ${TARGET_FILE})
   target_link_libraries(${TARGET} PRIVATE testlib)
   set_target_properties(${TARGET} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test/except
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/except
   )
   add_dependencies(tests ${TARGET})
 endforeach()

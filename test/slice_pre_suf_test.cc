@@ -76,6 +76,6 @@ TEST_CASE("Slice::Strip") {
 
   REQUIRE(s.strip("\n\r") == s);
   REQUIRE(s.strip(" \thelo").empty());
-};
+}
 
 }  // namespace DXU_NAMESPACE
