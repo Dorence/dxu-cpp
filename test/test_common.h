@@ -17,3 +17,11 @@
 
 #define REQUIRE_FP_NEAR_REL(a, b, rel_err) \
   REQUIRE_THAT((a), Catch::Matchers::WithinRel((b), (rel_err)))
+
+#if defined(__GNUC__) || defined(__clang__)
+#define NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define NOINLINE __declspec(noinline)
+#else
+#define NOINLINE
+#endif

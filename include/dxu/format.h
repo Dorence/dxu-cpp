@@ -125,7 +125,7 @@ inline std::string ToDoubleQuotedString(const std::string& s) {
   ret.reserve(s.size() + 2);  // assume all printable
   ret += "\"";
   for (char c : s) {
-    detail::ToEscapedString(ret, c, 1);
+    detail::ToEscapedString(ret, c, /*escapeQuotes=*/1);
   }
   ret += "\"";
   return ret;

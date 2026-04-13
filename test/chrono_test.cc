@@ -10,7 +10,7 @@ TEST_CASE("Chrono::NowMicros") {
   auto now = NowMicros();
   REQUIRE(now > 0);
   std::cout << "NowMicros(): " << now << std::endl;
-};
+}
 
 TEST_CASE("Chrono::NowMicrosSteady") {
   auto now_steady = NowMicrosSteady();
@@ -20,13 +20,13 @@ TEST_CASE("Chrono::NowMicrosSteady") {
   std::cout << "NowMicrosSteady(): " << now_steady << " vs NowMicros(): " << now
             << " (diff: " << static_cast<int64_t>(now_steady - now) << ")"
             << std::endl;
-};
+}
 
 TEST_CASE("Chrono::NowNanos") {
   auto now = NowNanos();
   REQUIRE(now > 0);
   std::cout << "NowNanos(): " << now << std::endl;
-};
+}
 
 TEST_CASE("Chrono::Format") {
   {

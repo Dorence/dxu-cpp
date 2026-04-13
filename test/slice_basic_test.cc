@@ -41,7 +41,7 @@ TEST_CASE("Slice::Empty") {
   s.clear();
   REQUIRE(s.empty());
   REQUIRE(s.valid());
-};
+}
 
 TEST_CASE("Slice::Access") {
   Slice s("ablablablaz");
@@ -62,7 +62,7 @@ TEST_CASE("Slice::Compare") {
   REQUIRE(s.compare("aluminum") > 0);
   REQUIRE(s.compare("go") > 0);
   REQUIRE(s.compare("goal") > 0);
-};
+}
 
 TEST_CASE("Slice::Equals") {
   Slice s("123456");
@@ -71,7 +71,7 @@ TEST_CASE("Slice::Equals") {
   REQUIRE(s == Slice("123456abcd", 6));
   REQUIRE(s != "1234567");
   REQUIRE(s != Slice("123456abcd"));
-};
+}
 
 TEST_CASE("Slice::ToString") {
   std::string s = "123456";
@@ -82,12 +82,12 @@ TEST_CASE("Slice::ToString") {
   constexpr std::string_view sv = "i_am_a_string_view";
   REQUIRE(sv == Slice(sv).ToStringView());
 #endif  // SUPPORT_STRING_VIEW
-};
+}
 
 TEST_CASE("Slice::DecodeHex") {
   std::string buf;
   REQUIRE(Slice("6c6F7665").DecodeHex(&buf));
   REQUIRE(buf == "love");
-};
+}
 
 }  // namespace DXU_NAMESPACE

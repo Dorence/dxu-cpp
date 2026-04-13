@@ -21,7 +21,7 @@ TEST_CASE("Conversion::StrToInt") {
   REQUIRE(err == EILSEQ);
   REQUIRE(StrToInt("</>", opts) == 0);
   REQUIRE(err == EINVAL);
-};
+}
 
 TEST_CASE("Conversion::VectorToString") {
   REQUIRE(VectorToString(std::vector<int>{1, 2, 3}) == "[1, 2, 3]");
@@ -35,7 +35,7 @@ TEST_CASE("Conversion::VectorToString") {
           "[a, b, c]");
   REQUIRE(VectorToString(std::vector<std::string>{"a", "", "z"}, "\", \"",
                          "{\"", "\"}") == "{\"a\", \"\", \"z\"}");
-};
+}
 
 struct Point {
   int x;
@@ -43,8 +43,8 @@ struct Point {
 };
 
 struct DoubleQuotedString {
-  DoubleQuotedString(const std::string& s) : s(s) {}
-  const std::string& s;
+  DoubleQuotedString(std::string* const ptr) : s(ptr) {}
+  std::string* const s;
 };
 
 namespace detail {
@@ -55,17 +55,34 @@ inline void VectorToStringFormat(std::string& r, const Point& e) {
 
 template <>
 inline void VectorToStringFormat(std::string& r, const DoubleQuotedString& e) {
-  r += format::ToDoubleQuotedString(e.s);
+  if (e.s == nullptr) {
+    r += "(nullptr)";
+  } else {
+    r += format::ToDoubleQuotedString(*e.s);
+  }
 }
 }  // namespace detail
 
-TEST_CASE("Conversion::VectorToStringCustom") {
+NOINLINE TEST_CASE("Conversion::VectorToStringCustom") {
   // custom type
   REQUIRE(VectorToString(std::vector<Point>{{1, 2}, {3, 4}}) ==
           "[(1,2), (3,4)]");
   // double quoted string
-  std::vector<DoubleQuotedString> v{{"a"}, {""}, {"c"}, {"\""}};
-  REQUIRE(VectorToString(v) == "[\"a\", \"\", \"c\", \"\\\"\"]");
+  std::vector<std::string> s = {"a", "", "c", "\""};
+  {
+    std::vector<DoubleQuotedString> vec{{&s[0]}};
+    REQUIRE(*vec[0].s == "a");
+    REQUIRE(VectorToString(vec) == "[\"a\"]");
+  }
+  {
+    std::vector<DoubleQuotedString> vec{{&s[0]}, {&s[1]}, {&s[2]}, {&s[3]}};
+    REQUIRE(*vec[2].s == "c");
+    REQUIRE(VectorToString(vec) == "[\"a\", \"\", \"c\", \"\\\"\"]");
+  }
+  {
+    std::vector<DoubleQuotedString> vec{{nullptr}};
+    REQUIRE(VectorToString(vec) == "[(nullptr)]");
+  }
 }
 
 TEST_CASE("Conversion::CArrayToString") {
@@ -104,7 +121,7 @@ TEST_CASE("Conversion::StringToVectorInt") {
   REQUIRE(result == (vint{-1, 0, 1, 2, 5, -1, -2, 1}));
   result = StringToVectorInt("12345, 0, -12345,-2 , 1 ");
   REQUIRE(result == (vint{12345, 0, -12345, -2, 1}));
-};
+}
 
 TEST_CASE("Conversion::StringToVectorIntAdvanced") {
   using vint = std::vector<int>;
@@ -147,7 +164,7 @@ TEST_CASE("Conversion::StringToVectorIntAdvanced") {
     REQUIRE(result == expected);
     REQUIRE(err == 0);
   }
-};
+}
 
 TEST_CASE("Conversion::StringToVectorIntError") {
   using vint = std::vector<int>;
@@ -177,6 +194,6 @@ TEST_CASE("Conversion::StringToVectorIntError") {
   result = StringToVectorInt("12345\t0-2   -12345", opts);
   REQUIRE(err == EILSEQ);
   REQUIRE(result == (vint{12345}));
-};
+}
 
 }  // namespace DXU_NAMESPACE

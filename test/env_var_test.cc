@@ -36,6 +36,6 @@ TEST_CASE("EnvVar::GetBool") {
   TestGetBool("\t\t\t", true, true, "\t\t\t");
   TestGetBool("123", false, false, "123");
   TestGetBool("turn", false, false, "turn");
-};
+}
 
 }  // namespace DXU_NAMESPACE
