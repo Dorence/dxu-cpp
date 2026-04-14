@@ -157,7 +157,7 @@ class Slice {
   }
 
   // npos if not found
-  constexpr size_t find(const char c, const size_t pos = 0) const noexcept {
+  constexpr size_t find(char c, size_t pos = 0) const noexcept {
     if (valid()) {
       for (size_t i = pos; i < size_; ++i) {
         if (data_[i] == c) return i;
@@ -166,18 +166,21 @@ class Slice {
     return npos;
   }
 
-  size_t find(const Slice& s, const size_t pos = 0) const noexcept;
+  size_t find(const Slice& s, size_t pos = 0) const noexcept;
 
-  constexpr size_t rfind(const char c) const noexcept {
+  constexpr size_t rfind(char c, size_t pos = npos) const noexcept {
     if (valid() && !empty()) {
-      for (const char* p = data_ + size_ - 1; p > data_; --p) {
+      // search whole slice if pos >= size_
+      if (pos >= size_) pos = size_ - 1;
+      // data_ != nullptr, never downflow
+      for (const char* p = data_ + pos; p >= data_; --p) {
         if (*p == c) return static_cast<size_t>(p - data_);
       }
     }
     return npos;
   }
 
-  // constexpr size_t rfind(const Slice& s) const noexcept;
+  // constexpr size_t rfind(const Slice& s, size_t pos = npos) const noexcept;
 
   constexpr bool contains(const char c) const noexcept {
     return find(c) != npos;
@@ -195,7 +198,8 @@ class Slice {
   }
 
   constexpr size_t find_first_not_of(const Slice& s) const noexcept {
-    if (valid() && s.valid() && !s.empty()) {
+    if (valid() && !empty() && s.valid()) {
+      if (s.empty()) return 0;
       for (size_t i = 0; i < size_; ++i) {
         if (!s.contains(data_[i])) return i;
       }
@@ -205,7 +209,7 @@ class Slice {
 
   constexpr size_t find_last_of(const Slice& s) const noexcept {
     if (valid() && !empty() && s.valid() && !s.empty()) {
-      for (const char* p = data_ + size_ - 1; p > data_; --p) {
+      for (const char* p = data_ + size_ - 1; p >= data_; --p) {
         if (s.contains(*p)) return static_cast<size_t>(p - data_);
       }
     }
@@ -213,8 +217,9 @@ class Slice {
   }
 
   constexpr size_t find_last_not_of(const Slice& s) const noexcept {
-    if (valid() && !empty() && s.valid() && !s.empty()) {
-      for (const char* p = data_ + size_ - 1; p > data_; --p) {
+    if (valid() && !empty() && s.valid()) {
+      if (s.empty()) return size_ - 1;
+      for (const char* p = data_ + size_ - 1; p >= data_; --p) {
         if (!s.contains(*p)) return static_cast<size_t>(p - data_);
       }
     }
@@ -265,7 +270,7 @@ class Slice {
   class Converter {
    public:
     Converter(const S& s) noexcept : s_(s) {}
-    operator T() const noexcept { return T(s_.data_, s_.size_); }
+    operator T() const noexcept { return {s_.data_, s_.size_}; }
     const S& s_;
     static_assert(sizeof(*T::data_) == sizeof(*S::data_), "");
   };
@@ -332,7 +337,7 @@ int Slice::compare(const Slice& b) const noexcept {
   return r;
 }
 
-size_t Slice::find(const Slice& s, const size_t pos) const noexcept {
+size_t Slice::find(const Slice& s, size_t pos) const noexcept {
   if (valid() && s.valid()) {
     if (s.empty()) return 0;
     if (s.size_ + pos <= size_) {

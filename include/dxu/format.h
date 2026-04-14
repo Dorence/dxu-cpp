@@ -3,6 +3,7 @@
 
 #include <algorithm>  // std::reverse_copy
 #include <cstring>    // memcpy
+#include <string>
 
 #include "dxu/version.h"
 

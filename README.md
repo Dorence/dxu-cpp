@@ -30,7 +30,9 @@ make
 ```bash
 cd build
 make tests
-test/*_test
+make run_tests # run all Catch2 tests
+test/*_test # run single Catch2 test
+except/assert # special: release_assert test
 ```
 
 ## Integration

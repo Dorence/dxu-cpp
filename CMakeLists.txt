@@ -34,8 +34,10 @@ add_library(testlib STATIC test/test_common.cc)
 target_link_libraries(testlib PUBLIC dxu-cpp Catch2)
 
 add_custom_target(tests)
+set(TEST_BIN)
 
 aux_source_directory(test TEST_SRCS)
+list(REMOVE_DUPLICATES TEST_SRCS)
 foreach(TARGET_FILE ${TEST_SRCS})
   get_filename_component(TARGET ${TARGET_FILE} NAME_WE)
   if("${TARGET}" STREQUAL "test_common")
@@ -47,9 +49,13 @@ foreach(TARGET_FILE ${TEST_SRCS})
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test
   )
   add_dependencies(tests ${TARGET})
+  list(APPEND TEST_BIN ${TARGET})
 endforeach()
+list(REMOVE_DUPLICATES TEST_BIN)
+string(JOIN " " TEST_BIN ${TEST_BIN})
 
 aux_source_directory(test/except TEST_EXCEPT_SRCS)
+list(REMOVE_DUPLICATES TEST_EXCEPT_SRCS)
 foreach(TARGET_FILE ${TEST_EXCEPT_SRCS})
   get_filename_component(TARGET ${TARGET_FILE} NAME_WE)
   add_executable(${TARGET} ${TARGET_FILE})
@@ -60,7 +66,20 @@ foreach(TARGET_FILE ${TEST_EXCEPT_SRCS})
   add_dependencies(tests ${TARGET})
 endforeach()
 
+message("TEST_SRCS: ${TEST_SRCS}")
+message("TEST_EXCEPT_SRCS: ${TEST_EXCEPT_SRCS}")
+message("TEST_BIN: ${TEST_BIN}")
+
+# make tests
 add_custom_command(TARGET tests POST_BUILD
   COMMENT "Built all tests."
   COMMAND ${CMAKE_COMMAND} -E true
+)
+
+# make run_tests
+add_custom_target(run_tests DEPENDS tests)
+add_custom_command(TARGET run_tests POST_BUILD
+  COMMENT "Running all tests."
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test/runner.sh ARGS ${TEST_BIN}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
