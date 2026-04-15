@@ -29,7 +29,7 @@ make
 
 ```bash
 cd build
-make tests
+make tests # build all tests
 make run_tests # run all Catch2 tests
 test/*_test # run single Catch2 test
 except/assert # special: release_assert test
@@ -65,3 +65,10 @@ except/assert # special: release_assert test
 ```
 
 - `__INTELLISENSE__` is added to help VS/VSCode intellisense.
+
+## Links
+
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [Contributing](./CONTRIBUTING.md)
+- [MIT License](./LICENSE)
+- [Security Policy](./SECURITY.md)
