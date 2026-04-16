@@ -24,6 +24,9 @@ uint64_t NowMicrosSteady();
 // nanoseconds since the Steady Clock epoch.
 uint64_t NowNanos();
 
+// nanoseconds since the UTC epoch.
+uint64_t NowNanosUTC();
+
 // sleep for microseconds.
 void SleepMicros(uint32_t micros);
 
@@ -145,6 +148,8 @@ uint64_t NowNanos() {
   return StdClockNow<std::chrono::steady_clock>();
 #endif
 }
+
+uint64_t NowNanosUTC() { return NowNanos() + ClockOffset(); }
 
 void SleepMicros(uint32_t micros) {
   std::this_thread::sleep_for(std::chrono::microseconds(micros));

@@ -6,6 +6,7 @@
 #define DXU_RELEASE_ASSERT_H_INCLUDE
 
 #include "dxu/port/format.h"
+#include "dxu/port/likely.h"
 #include "dxu/version.h"
 
 namespace DXU_NAMESPACE {
@@ -46,13 +47,13 @@ extern char* program_invocation_short_name;  // from errno.h
 #endif  // DXU_ON_ASSERTION_MESSAGE
 
 #define release_assert(expr)                                          \
-  (__builtin_expect(!static_cast<bool>(expr), 0)                      \
+  (UNLIKELY(!static_cast<bool>(expr))                                 \
        ? ::DXU_NAMESPACE::OnAssertion(#expr, __ASSERT_FILE, __LINE__, \
                                       __ASSERT_FUNCTION)              \
        : void(0))
 
 #define release_assert_msg(expr, fmt, ...)                   \
-  (__builtin_expect(!static_cast<bool>(expr), 0)             \
+  (UNLIKELY(!static_cast<bool>(expr))                        \
        ? DXU_ON_ASSERTION_MESSAGE(fmt, #expr, ##__VA_ARGS__) \
        : void(0))
 
