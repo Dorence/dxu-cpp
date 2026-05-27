@@ -1,12 +1,10 @@
 ---
 alwaysApply: false
-description: Rules for Git commit message
+description: Git Commit Message Rules
 ---
-# Git Commit Message Rules
-
-- Use English
-- Use Conventional Commits 1.0.0.
-- Should refer to historical commit messages.
+- Use English.
+- Follow Conventional Commits spec.
+- Follow historical commit style.
 
 ## Conventional Commits
 
@@ -15,18 +13,18 @@ description: Rules for Git commit message
 
 [body]
 
-[footer: message]
+[footer]
 ```
 
-1. `type` is required and must be one of `feat`, `fix`, `ai`, `build`, `ci`, `chore`, `docs`, `refactor`, `perf`, `test`.
-2. `scope` is optional and should be a noun that describes a section of the project.
-3. (Don't use in this project) `!` is optional and marks a breaking change.
-4. `description` is required and should be a short summary of the change.
-5. `body` is optional and starts after one blank line.
-6. `footer` is optional, starts after one blank line, and may contain multiple git trailer-like entries.
+1. `type` is required and MUST be one of `feat`, `fix`, `ai`, `build`, `ci`, `chore`, `docs`, `refactor`, `perf`, `test`.
+2. (Optional) `scope` SHOULD be a noun that describes a section of the project.
+3. (NEVER use in this project) Optional `!` marks a breaking change.
+4. `description` is required and SHOULD be a short summary of the change.
+5. (Optional) `body` is for complex changes and starts after one blank line.
+6. (Optional) `footer` MAY contain multiple git trailers and starts after one blank line.
   - Breaking change: `BREAKING CHANGE:`.
-  - People: `Signed-off-by:`, `Acked-by:`, `Co-authored-by:`, `Reviewed-by:`.
-  - Links: `Refs:`, `See:`, `See-also:`.
+  - Committer: `Signed-off-by:`, `Acked-by:`, `Co-authored-by:`, `Reviewed-by:`, `Reported-by:`.
+  - Link: `Refs:`, `See:`.
 
 ## Examples
 
