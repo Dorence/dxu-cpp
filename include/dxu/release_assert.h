@@ -33,7 +33,9 @@ void OnAssertionMessage(const char* format, ...) DXU_PRINTF_ATTR(1, 2);
 #endif  // __ASSERT_FILE
 
 #ifdef __GLIBC__
+extern "C" {
 extern char* program_invocation_short_name;  // from errno.h
+}
 #define DXU_ON_ASSERTION_MESSAGE(fmt, expr, ...)              \
   ::DXU_NAMESPACE::OnAssertionMessage(                        \
       "%s: %s:%d: %s: Assertion `%s' failed. " fmt "\n",      \
