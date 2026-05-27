@@ -1,5 +1,7 @@
 /**
- * @brief std::shared_mutex portability.
+ * Portable macros for std::shared_mutex and related locks.
+ *
+ * @author Dorence Deng <dorencedeng@gmail.com>
  */
 #pragma once
 
@@ -24,5 +26,4 @@ using shared_mutex = std::mutex;
 using shared_lock_sm = std::unique_lock<std::mutex>;
 using unique_lock_sm = std::unique_lock<std::mutex>;
 #endif
-
 }  // namespace DXU_NAMESPACE

@@ -1,3 +1,8 @@
+/**
+ * Define LIKELY and UNLIKELY branch prediction macros.
+ * 
+ * @author Dorence Deng <dorencedeng@gmail.com>
+ */
 #pragma once
 
 #ifndef LIKELY

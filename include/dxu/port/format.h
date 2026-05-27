@@ -1,3 +1,8 @@
+/**
+ * Define printf-like format check macros.
+ *
+ * @author Dorence Deng <dorencedeng@gmail.com>
+ */
 #pragma once
 
 #ifndef __GNUC_PREREQ
