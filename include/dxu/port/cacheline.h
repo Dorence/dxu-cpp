@@ -22,7 +22,9 @@
 static_assert((CACHE_LINE_SIZE & (CACHE_LINE_SIZE - 1)) == 0,
               "Cache line size must be power of 2");
 
-#ifndef CALC_CL_PAD
+#ifndef ALIGN_CL
+// Make fields cache line aligned
+#define ALIGN_CL alignas(CACHE_LINE_SIZE)
 // Calculate padding bytes for cache line alignment
 #define CALC_CL_PAD(sz) (CACHE_LINE_SIZE - (sz) % CACHE_LINE_SIZE)
 // Padding field for cache line alignment
