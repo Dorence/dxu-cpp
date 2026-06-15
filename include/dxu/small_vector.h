@@ -23,12 +23,20 @@ namespace DXU_NAMESPACE {
  * - [c][r]begin / [c][r]end
  * - reserve / resize / clear
  * - push_back / emplace_back
- * - assign / swap
+ * - assign / move&copy ctor&assignment: allow different inline capacities
+ * - swap
  *
  * Limitations:
  * - Don't pass references to existing elements as insertion or fill arguments,
  *   because reallocation can invalidate those references. For example,
  *   `v.push_back(v.front())`, `v.resize(v.size() + 1, v.back())`.
+ * - Use move/swap only when you understand the storage state and cost.
+ *   * Moving/swapping inline elements requires element-wise moves. Swap
+ *     requires 3 moves in the worst case.
+ *   * Trivially relocatable elements can use memcpy fast path, but still
+ *     expensive.
+ *   * If cheap move/swap is important, reserve more than N elements or choose a
+ *     smaller N to spill to heap earlier.
  * - No assertions are provided, but at() still throws std::out_of_range.
  *   Use operator[] / front() / back() with care.
  * - No special handling for std::bad_alloc or throwing destructors. May
@@ -53,6 +61,8 @@ class SmallVector
   using const_iterator = typename base_::const_iterator;
   using reverse_iterator = typename base_::reverse_iterator;
   using const_reverse_iterator = typename base_::const_reverse_iterator;
+
+  static constexpr size_type inline_capacity = N;
 
  protected:
   using alloc_traits_ = std::allocator_traits<allocator_type>;
@@ -110,6 +120,16 @@ class SmallVector
   SmallVector(const SmallVector& other) : SmallVector() {
     reserve(other.size());
     copy_into_uninitialized(other.begin(), other.end());
+  }
+
+  template <std::size_t N2>
+  SmallVector(const SmallVector<T, N2>& other) : SmallVector() {
+    reserve(other.size());
+    copy_into_uninitialized(other.begin(), other.end());
+  }
+
+  SmallVector(SmallVector&& other) noexcept(kNothrowMovable) : SmallVector() {
+    move_from(std::move(other));
   }
 
   template <std::size_t N2>

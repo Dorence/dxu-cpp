@@ -1,95 +1,107 @@
 #include "dxu/small_vector.h"
 
+#include <array>
+#include <list>
+
 #include "test_common.h"
 
 namespace DXU_NAMESPACE {
 
-/** A helper class that counts the total number of constructor and destructor
- * calls. */
+// A helper class that counts the total number of constructor and
+// destructor calls.
 class Constructable {
  public:
-  Constructable() : constructed_{true}, value_{0} { ++num_constructor_calls; }
+  static int numConstructorCalls;
+  static int numMoveConstructorCalls;
+  static int numCopyConstructorCalls;
+  static int numDestructorCalls;
+  static int numAssignmentCalls;
+  static int numMoveAssignmentCalls;
+  static int numCopyAssignmentCalls;
 
-  explicit Constructable(int value) : constructed_{true}, value_{value} {
-    ++num_constructor_calls;
+ private:
+  bool constructed_;
+  int value_;
+
+ public:
+  Constructable() : constructed_(true), value_(0) { ++numConstructorCalls; }
+
+  explicit Constructable(int value) : constructed_(true), value_(value) {
+    ++numConstructorCalls;
   }
 
   Constructable(const Constructable& other)
-      : constructed_{true}, value_{other.value_} {
+      : constructed_(true), value_(other.value_) {
     CHECK(other.constructed_);
-    ++num_constructor_calls;
-    ++num_copy_constructor_calls;
+    ++numConstructorCalls;
+    ++numCopyConstructorCalls;
   }
 
   Constructable(Constructable&& other) noexcept
-      : constructed_{true}, value_{other.value_} {
+      : constructed_(true), value_(other.value_) {
     CHECK(other.constructed_);
     other.value_ = 0;
-    ++num_constructor_calls;
-    ++num_move_constructor_calls;
+    ++numConstructorCalls;
+    ++numMoveConstructorCalls;
+  }
+
+  ~Constructable() {
+    CHECK(constructed_);
+    ++numDestructorCalls;
+    constructed_ = false;
   }
 
   Constructable& operator=(const Constructable& other) {
     CHECK(constructed_);
-    CHECK(other.constructed_);
     value_ = other.value_;
-    ++num_assignment_calls;
-    ++num_copy_assignment_calls;
+    ++numAssignmentCalls;
+    ++numCopyAssignmentCalls;
     return *this;
   }
 
   Constructable& operator=(Constructable&& other) noexcept {
     CHECK(constructed_);
-    CHECK(other.constructed_);
     value_ = other.value_;
     other.value_ = 0;
-    ++num_assignment_calls;
-    ++num_move_assignment_calls;
+    ++numAssignmentCalls;
+    ++numMoveAssignmentCalls;
     return *this;
   }
 
-  ~Constructable() {
-    CHECK(constructed_);
-    constructed_ = false;
-    ++num_destructor_calls;
+  int getValue() const { return std::abs(value_); }
+
+  static void reset() {
+    numConstructorCalls = 0;
+    numMoveConstructorCalls = 0;
+    numCopyConstructorCalls = 0;
+    numDestructorCalls = 0;
+    numAssignmentCalls = 0;
+    numMoveAssignmentCalls = 0;
+    numCopyAssignmentCalls = 0;
   }
 
   friend bool operator==(const Constructable& lhs, const Constructable& rhs) {
-    return lhs.get_value() == rhs.get_value();
+    return lhs.getValue() == rhs.getValue();
   }
-
-  int get_value() const { return std::abs(value_); }
-
-  static void reset() {
-    num_constructor_calls = 0;
-    num_copy_constructor_calls = 0;
-    num_move_constructor_calls = 0;
-    num_destructor_calls = 0;
-    num_assignment_calls = 0;
-    num_copy_assignment_calls = 0;
-    num_move_assignment_calls = 0;
-  }
-
-  static int num_constructor_calls;
-  static int num_copy_constructor_calls;
-  static int num_move_constructor_calls;
-  static int num_destructor_calls;
-  static int num_assignment_calls;
-  static int num_copy_assignment_calls;
-  static int num_move_assignment_calls;
-
- private:
-  bool constructed_;
-  int value_;
 };
 
-int Constructable::num_constructor_calls;
-int Constructable::num_copy_constructor_calls;
-int Constructable::num_move_constructor_calls;
-int Constructable::num_destructor_calls;
-int Constructable::num_assignment_calls;
-int Constructable::num_copy_assignment_calls;
-int Constructable::num_move_assignment_calls;
+int Constructable::numConstructorCalls;
+int Constructable::numCopyConstructorCalls;
+int Constructable::numMoveConstructorCalls;
+int Constructable::numDestructorCalls;
+int Constructable::numAssignmentCalls;
+int Constructable::numCopyAssignmentCalls;
+int Constructable::numMoveAssignmentCalls;
+
+struct NonCopyable {
+  NonCopyable() = default;
+  NonCopyable(NonCopyable&&) noexcept {}
+  NonCopyable& operator=(NonCopyable&&) noexcept { return *this; }
+
+ private:
+  NonCopyable(const NonCopyable&) = delete;
+  NonCopyable& operator=(const NonCopyable&) = delete;
+};
 
 struct CopyOnly {
   int value;
@@ -104,25 +116,16 @@ struct CopyOnly {
   CopyOnly& operator=(CopyOnly&&) = delete;
 };
 
-struct NonCopyable {
-  NonCopyable() = default;
-  NonCopyable(NonCopyable&&) noexcept {}
-  NonCopyable& operator=(NonCopyable&&) noexcept { return *this; }
-
- private:
-  NonCopyable(const NonCopyable&) = delete;
-  NonCopyable& operator=(const NonCopyable&) = delete;
-};
-
+template <typename T = int>
 class InputIterator {
  public:
   using iterator_category = std::input_iterator_tag;
-  using value_type = int;
+  using value_type = T;
   using difference_type = std::ptrdiff_t;
-  using pointer = const int*;
-  using reference = const int&;
+  using pointer = const T*;    // const iterator
+  using reference = const T&;  // const iterator
 
-  explicit InputIterator(const int* ptr) : ptr_{ptr} {}
+  explicit InputIterator(pointer ptr) : ptr_(ptr) {}
 
   reference operator*() const { return *ptr_; }
 
@@ -146,7 +149,7 @@ class InputIterator {
   }
 
  private:
-  const int* ptr_;
+  pointer ptr_;
 };
 
 enum class EmplaceableArgState {
@@ -216,31 +219,34 @@ struct Emplaceable {
   Emplaceable& operator=(const Emplaceable&) = delete;
 };
 
-template <typename Vector>
-void expect_empty(const Vector& vector) {
-  REQUIRE((vector.size()) == (std::size_t{0}));
-  REQUIRE(vector.empty());
-}
-
-template <typename Vector, typename... Values>
-void expect_values(const Vector& vector, Values... values) {
+template <typename VecT, typename... Values>
+void EXPECT_VALUES(const VecT& vector, Values... values) {
   const int expected[]{values...};
   constexpr std::size_t expected_size{sizeof...(Values)};
 
-  REQUIRE((vector.size()) == (expected_size));
-  for (std::size_t i{0}; i < expected_size; ++i) {
-    REQUIRE((vector[i].get_value()) == (expected[i]));
+  REQUIRE(vector.size() == expected_size);
+  for (std::size_t i = 0; i < expected_size; ++i) {
+    REQUIRE(vector[i].getValue() == expected[i]);
     REQUIRE(&vector[i] == vector.data() + i);
   }
 }
 
-template <typename Vector>
-void make_sequence(Vector& vector, int first, int last) {
-  for (int value{first}; value <= last; ++value) {
+template <typename VecT>
+void EXPECT_EMPTY(const VecT& vector) {
+  REQUIRE(vector.size() == 0UL);
+  REQUIRE(vector.empty());
+  REQUIRE(vector.begin() == vector.end());
+}
+
+// Generate a sequence of values to initialize the vector.
+template <typename VecT>
+void make_sequence(VecT& vector, int first, int last) {
+  for (int value = first; value <= last; ++value) {
     vector.push_back(Constructable{value});
   }
 }
 
+// Mock gtest's TYPED_TEST_SUITE
 #define RUN_TEST_CAPACITY(func) \
   do {                          \
     func<1>();                  \
@@ -252,31 +258,41 @@ void make_sequence(Vector& vector, int first, int last) {
 
 template <std::size_t N>
 void test_construct_non_copyable() {
-  SmallVector<NonCopyable, N> vector;
-  vector.resize(42);
-  REQUIRE(vector.size() == std::size_t{42});
+  SmallVector<NonCopyable, N> vector(42);
+  REQUIRE(vector.size() == 42UL);
   REQUIRE(vector.data() != nullptr);
 }
 
 // Adapted from LLVM ConstructNonCopyableTest.
-// dxu::SmallVector requires N > 0 and has no size constructor, so this uses
-// N=1 plus resize().
+// dxu::SmallVector requires N>0, use N=1.
 TEST_CASE("SmallVectorTest::ConstructNonCopyableTest") {
   test_construct_non_copyable<1>();
 }
 
 template <std::size_t N>
+void test_constructor_non_iter() {
+  Constructable::reset();
+  SmallVector<Constructable, N> V{};
+  V = SmallVector<Constructable, 2>(2, Constructable{2});
+  EXPECT_VALUES(V, 2, 2);
+}
+
+// Adapted from LLVM ConstructorNonIterTest.
+TEST_CASE("SmallVectorTest::ConstructorNonIterTest") {
+  RUN_TEST_CAPACITY(test_constructor_non_iter);
+}
+
+template <std::size_t N>
 void test_empty_vector() {
   Constructable::reset();
-  SmallVector<Constructable, N> vector;
-  expect_empty(vector);
-  REQUIRE(vector.data() != nullptr);
-  REQUIRE(Constructable::num_constructor_calls == 0);
-  REQUIRE(Constructable::num_destructor_calls == 0);
+  SmallVector<Constructable, N> V;
+  EXPECT_EMPTY(V);
+  REQUIRE(V.rbegin() == V.rend());
+  REQUIRE(Constructable::numConstructorCalls == 0);
+  REQUIRE(Constructable::numDestructorCalls == 0);
 }
 
 // Adapted from LLVM EmptyVectorTest.
-// Converted from typed gtest to explicit dxu capacities.
 TEST_CASE("SmallVectorTest::EmptyVectorTest") {
   RUN_TEST_CAPACITY(test_empty_vector);
 }
@@ -284,22 +300,35 @@ TEST_CASE("SmallVectorTest::EmptyVectorTest") {
 template <std::size_t N>
 void test_push_back() {
   Constructable::reset();
-  SmallVector<Constructable, N> vector;
+  SmallVector<Constructable, N> V;
 
-  vector.push_back(Constructable{1});
-  expect_values(vector, 1);
-  REQUIRE_FALSE(vector.empty());
+  // Push an element
+  V.push_back(Constructable{1});
 
-  vector.push_back(Constructable{2});
-  expect_values(vector, 1, 2);
+  // Size tests
+  EXPECT_VALUES(V, 1);
+  REQUIRE_FALSE(V.begin() == V.end());
+  REQUIRE_FALSE(V.empty());
 
-  vector.emplace_back(3);
-  expect_values(vector, 1, 2, 3);
+  // Push another element
+  V.push_back(Constructable(2));
+  EXPECT_VALUES(V, 1, 2);
+
+  // Each push_back constructs a temporary argument and move-constructs it into
+  // storage (2 ctors, 1 dtor per call). The two live elements always equal
+  // ctor - dtor.
+  if (N < 2) {
+    // The second push_back must grow, relocating the existing element.
+    REQUIRE(Constructable::numConstructorCalls == 5);
+    REQUIRE(Constructable::numDestructorCalls == 3);
+  } else {
+    REQUIRE(Constructable::numConstructorCalls == 4);
+    REQUIRE(Constructable::numDestructorCalls == 2);
+  }
 }
 
 // Adapted from LLVM PushPopTest.
-// dxu::SmallVector has no insert/pop APIs, so this covers push_back and
-// emplace_back only.
+// dxu::SmallVector has no insert/pop APIs, so this covers push_back only.
 TEST_CASE("SmallVectorTest::PushBackTest") {
   RUN_TEST_CAPACITY(test_push_back);
 }
@@ -313,9 +342,9 @@ void test_clear() {
   make_sequence(vector, 1, 2);
   vector.clear();
 
-  expect_empty(vector);
-  REQUIRE(Constructable::num_constructor_calls == 4);
-  REQUIRE(Constructable::num_destructor_calls == 4);
+  EXPECT_EMPTY(vector);
+  REQUIRE(Constructable::numConstructorCalls == 4);
+  REQUIRE(Constructable::numDestructorCalls == 4);
 }
 
 // Adapted from LLVM ClearTest.
@@ -330,9 +359,9 @@ void test_resize_shrink() {
   make_sequence(vector, 1, 3);
   vector.resize(1);
 
-  expect_values(vector, 1);
-  REQUIRE(Constructable::num_constructor_calls == 6);
-  REQUIRE(Constructable::num_destructor_calls == 5);
+  EXPECT_VALUES(vector, 1);
+  REQUIRE(Constructable::numConstructorCalls == 6);
+  REQUIRE(Constructable::numDestructorCalls == 5);
 }
 
 // Adapted from LLVM ResizeShrinkTest.
@@ -347,11 +376,11 @@ void test_resize_grow() {
 
   vector.resize(2);
 
-  REQUIRE(Constructable::num_constructor_calls == 2);
-  REQUIRE(Constructable::num_destructor_calls == 0);
+  REQUIRE(Constructable::numConstructorCalls == 2);
+  REQUIRE(Constructable::numDestructorCalls == 0);
   REQUIRE(vector.size() == std::size_t{2});
-  REQUIRE(vector[0].get_value() == 0);
-  REQUIRE(vector[1].get_value() == 0);
+  REQUIRE(vector[0].getValue() == 0);
+  REQUIRE(vector[1].getValue() == 0);
   REQUIRE(vector.data() != nullptr);
   REQUIRE(&vector[1] == vector.data() + 1);
 }
@@ -371,18 +400,18 @@ void test_resize_with_existing_elements() {
   vector.resize(4);
 
   // LLVM ResizeWithElementsTest tolerates either of the two SBO growth shapes.
-  const std::size_t ctors = Constructable::num_constructor_calls;
+  const std::size_t ctors = Constructable::numConstructorCalls;
   REQUIRE((ctors == 2 || ctors == 4));
-  const std::size_t move_ctors = Constructable::num_move_constructor_calls;
+  const std::size_t move_ctors = Constructable::numMoveConstructorCalls;
   REQUIRE((move_ctors == 0 || move_ctors == 2));
-  const std::size_t dtors = Constructable::num_destructor_calls;
+  const std::size_t dtors = Constructable::numDestructorCalls;
   REQUIRE((dtors == 0 || dtors == 2));
 
   REQUIRE(vector.size() == std::size_t{4});
-  REQUIRE(vector[0].get_value() == 0);
-  REQUIRE(vector[1].get_value() == 0);
-  REQUIRE(vector[2].get_value() == 0);
-  REQUIRE(vector[3].get_value() == 0);
+  REQUIRE(vector[0].getValue() == 0);
+  REQUIRE(vector[1].getValue() == 0);
+  REQUIRE(vector[2].getValue() == 0);
+  REQUIRE(vector[3].getValue() == 0);
   REQUIRE(&vector[3] == vector.data() + 3);
 }
 
@@ -398,7 +427,7 @@ void test_resize_fill() {
   SmallVector<Constructable, N> vector;
 
   vector.resize(3, Constructable{77});
-  expect_values(vector, 77, 77, 77);
+  EXPECT_VALUES(vector, 77, 77, 77);
 }
 
 // Adapted from LLVM ResizeFillTest.
@@ -416,12 +445,12 @@ void test_overflow_inline_storage() {
 
   REQUIRE(vector.size() == std::size_t{10});
   for (std::size_t i{0}; i < vector.size(); ++i) {
-    REQUIRE(vector[i].get_value() == static_cast<int>(i + 1));
+    REQUIRE(vector[i].getValue() == static_cast<int>(i + 1));
     REQUIRE(&vector[i] == vector.data() + i);
   }
 
   vector.resize(1);
-  expect_values(vector, 1);
+  EXPECT_VALUES(vector, 1);
 }
 
 // Adapted from LLVM OverflowTest.
@@ -437,15 +466,15 @@ void test_front_back_accessors() {
   make_sequence(vector, 1, 2);
 
   REQUIRE(vector.front() == vector[0]);
-  REQUIRE(vector.front().get_value() == 1);
+  REQUIRE(vector.front().getValue() == 1);
   REQUIRE(vector.back() == vector[1]);
-  REQUIRE(vector.back().get_value() == 2);
+  REQUIRE(vector.back().getValue() == 2);
 
   const SmallVector<Constructable, N>& const_vector = vector;
   REQUIRE(const_vector.front() == const_vector[0]);
-  REQUIRE(const_vector.front().get_value() == 1);
+  REQUIRE(const_vector.front().getValue() == 1);
   REQUIRE(const_vector.back() == const_vector[1]);
-  REQUIRE(const_vector.back().get_value() == 2);
+  REQUIRE(const_vector.back().getValue() == 2);
 }
 
 template <std::size_t N>
@@ -458,49 +487,74 @@ void test_begin_end_iteration() {
   auto it = vector.begin();
   REQUIRE(*it == vector.front());
   REQUIRE(*it == vector[0]);
-  REQUIRE(it->get_value() == 1);
+  REQUIRE(it->getValue() == 1);
   ++it;
   REQUIRE(*it == vector[1]);
   REQUIRE(*it == vector.back());
-  REQUIRE(it->get_value() == 2);
+  REQUIRE(it->getValue() == 2);
   ++it;
   REQUIRE(it == vector.end());
   // Bidirectional iteration, mirroring LLVM IterationTest.
   --it;
   REQUIRE(*it == vector[1]);
-  REQUIRE(it->get_value() == 2);
+  REQUIRE(it->getValue() == 2);
   --it;
   REQUIRE(*it == vector[0]);
-  REQUIRE(it->get_value() == 1);
+  REQUIRE(it->getValue() == 1);
+
+  auto rit = vector.rbegin();
+  REQUIRE(*rit == vector[1]);
+  REQUIRE(rit->getValue() == 2);
+  ++rit;
+  REQUIRE(*rit == vector[0]);
+  REQUIRE(rit->getValue() == 1);
+  ++rit;
+  REQUIRE(rit == vector.rend());
+  --rit;
+  REQUIRE(*rit == vector[0]);
+  REQUIRE(rit->getValue() == 1);
+  --rit;
+  REQUIRE(*rit == vector[1]);
+  REQUIRE(rit->getValue() == 2);
 
   int expected_value = 10;
   for (auto& value : vector) {
     value = Constructable{expected_value++};
   }
-  expect_values(vector, 10, 11);
+  EXPECT_VALUES(vector, 10, 11);
 
   const SmallVector<Constructable, N>& const_vector = vector;
   auto const_it = const_vector.begin();
   REQUIRE(const_it == const_vector.cbegin());
   REQUIRE(*const_it == const_vector[0]);
-  REQUIRE(const_it->get_value() == 10);
+  REQUIRE(const_it->getValue() == 10);
   ++const_it;
   REQUIRE(*const_it == const_vector[1]);
-  REQUIRE(const_it->get_value() == 11);
+  REQUIRE(const_it->getValue() == 11);
   ++const_it;
   REQUIRE(const_it == const_vector.end());
   REQUIRE(const_it == const_vector.cend());
 
+  auto const_rit = const_vector.rbegin();
+  REQUIRE(const_rit == const_vector.crbegin());
+  REQUIRE(*const_rit == const_vector[1]);
+  REQUIRE(const_rit->getValue() == 11);
+  ++const_rit;
+  REQUIRE(*const_rit == const_vector[0]);
+  REQUIRE(const_rit->getValue() == 10);
+  ++const_rit;
+  REQUIRE(const_rit == const_vector.rend());
+  REQUIRE(const_rit == const_vector.crend());
+
   int sum = 0;
   for (const auto& value : const_vector) {
-    sum += value.get_value();
+    sum += value.getValue();
   }
   REQUIRE(sum == 21);
 }
 
 // Adapted from LLVM IterationTest.
-// Reverse iterators are not provided, and range-for checks were added for dxu
-// pointer iterators.
+// Includes reverse iterator and range-for checks for dxu pointer iterators.
 TEST_CASE("SmallVectorTest::IterationTest") {
   RUN_TEST_CAPACITY(test_front_back_accessors);
   RUN_TEST_CAPACITY(test_begin_end_iteration);
@@ -514,8 +568,8 @@ void test_swap_small_and_empty() {
 
   vector.swap(other);
 
-  expect_empty(vector);
-  expect_values(other, 1, 2);
+  EXPECT_EMPTY(vector);
+  EXPECT_VALUES(other, 1, 2);
 }
 
 // Adapted from LLVM SwapTest.
@@ -525,17 +579,62 @@ TEST_CASE("SmallVectorTest::SwapTest") {
 }
 
 template <std::size_t N>
-void test_assign_range_from_small_vector_same_n() {
-  SmallVector<Constructable, N> other_vector;
-  other_vector.push_back(Constructable{7});
-  other_vector.push_back(Constructable{7});
-
+void test_assign() {
   SmallVector<Constructable, N> vector;
-  vector.push_back(Constructable{1});
-  vector.assign(other_vector);
+  auto& V = vector;
+  V.push_back(Constructable{1});
+  V.assign(2, Constructable{77});
+  EXPECT_VALUES(V, 77, 77);
+}
 
-  expect_values(vector, 7, 7);
-  REQUIRE(vector.capacity() >= N);
+// Adapted from LLVM AssignTest.
+TEST_CASE("SmallVectorTest::AssignTest") { RUN_TEST_CAPACITY(test_assign); }
+
+template <std::size_t N>
+void test_assign_range() {
+  SmallVector<Constructable, N> vector;
+  auto& V = vector;
+  V.push_back(Constructable{1});
+  Constructable arr[]{Constructable{1}, Constructable{2}, Constructable{3}};
+  V.assign(std::begin(arr), std::end(arr));
+  EXPECT_VALUES(V, 1, 2, 3);
+}
+
+// Adapted from LLVM AssignRangeTest.
+// dxu::Constructable(int) is explicit, so the source array is built explicitly.
+TEST_CASE("SmallVectorTest::AssignRangeTest") {
+  RUN_TEST_CAPACITY(test_assign_range);
+}
+
+template <std::size_t N>
+void test_assign_non_iter() {
+  SmallVector<Constructable, N> vector;
+  auto& V = vector;
+  V.push_back(Constructable{1});
+  V.assign(2, Constructable{7});
+  EXPECT_VALUES(V, 7, 7);
+}
+
+// Adapted from LLVM AssignNonIterTest.
+// dxu::Constructable(int) is explicit, so the fill value is Constructable{7}.
+TEST_CASE("SmallVectorTest::AssignNonIterTest") {
+  RUN_TEST_CAPACITY(test_assign_non_iter);
+}
+
+template <std::size_t N>
+void test_assign_small_vector() {
+  SmallVector<Constructable, N> vector;
+  auto& V = vector;
+  SmallVector<Constructable, 3> otherVector = {Constructable{7},
+                                               Constructable{7}};
+  V.push_back(Constructable{1});
+  V.assign(otherVector);
+  EXPECT_VALUES(V, 7, 7);
+}
+
+// Adapted from LLVM AssignSmallVector.
+TEST_CASE("SmallVectorTest::AssignSmallVector") {
+  RUN_TEST_CAPACITY(test_assign_small_vector);
 }
 
 void test_assign_range_from_small_vector_different_n_reallocate() {
@@ -582,7 +681,7 @@ void test_assign_range_from_small_vector_different_n_reuses_existing_capacity() 
   REQUIRE(target[1].value == 34);
 }
 
-void test_assign_count_value() {
+void test_assign_count_value_grow_and_shrink() {
   SmallVector<int, 2> vector{1, 2, 3};
   vector.assign(4, 9);
 
@@ -592,20 +691,27 @@ void test_assign_count_value() {
     REQUIRE(value == 9);
   }
 
+  const int* before = vector.data();
+  const std::size_t before_capacity = vector.capacity();
   vector.assign(1, 5);
   REQUIRE(vector.size() == std::size_t{1});
   REQUIRE(vector[0] == 5);
+  // Shrinking must not reallocate.
+  REQUIRE(vector.data() == before);
+  REQUIRE(vector.capacity() == before_capacity);
 }
 
 void test_assign_range_preallocates_for_forward_iterators() {
-  SmallVector<int, 3> source{1, 2, 3, 4};
+  // std::list exposes bidirectional (non-random-access) iterators, so the size
+  // must be computed via std::distance before reserving.
+  std::list<int> source{1, 2, 3, 4};
   SmallVector<int, 2> target;
   target.push_back(99);
 
   target.assign(source.begin(), source.end());
 
-  REQUIRE(target.size() == source.size());
-  REQUIRE(target.capacity() == source.size());
+  REQUIRE(target.size() == std::size_t{4});
+  REQUIRE(target.capacity() == std::size_t{4});
   REQUIRE(target[0] == 1);
   REQUIRE(target[1] == 2);
   REQUIRE(target[2] == 3);
@@ -624,6 +730,17 @@ void test_assign_range_from_input_iterators() {
   REQUIRE(target[2] == 7);
 }
 
+void test_assign_range_from_random_access_iterators() {
+  std::array<int, 4> source{1, 2, 3, 4};
+  SmallVector<int, 2> target{99};
+  target.assign(source.begin(), source.end());
+  REQUIRE(target.size() == std::size_t{4});
+  REQUIRE(target[0] == 1);
+  REQUIRE(target[1] == 2);
+  REQUIRE(target[2] == 3);
+  REQUIRE(target[3] == 4);
+}
+
 void test_assign_initializer_list() {
   SmallVector<int, 2> vector{1, 2, 3};
   vector.assign({4});
@@ -637,14 +754,13 @@ void test_assign_initializer_list() {
   REQUIRE(vector[2] == 9);
 }
 
-// Adapted from LLVM AssignTest, AssignRangeTest, AssignNonIterTest, and
-// AssignSmallVector. Extra cases cover dxu cross-capacity assignment paths.
-TEST_CASE("SmallVectorTest::AssignTest") {
-  RUN_TEST_CAPACITY(test_assign_range_from_small_vector_same_n);
+// Non-LLVM coverage for dxu cross-capacity and input-iterator assignment paths.
+TEST_CASE("SmallVectorTest::AssignAdditionalCases") {
   test_assign_range_from_small_vector_different_n_reallocate();
   test_assign_range_from_small_vector_different_n_reuses_existing_capacity();
-  test_assign_count_value();
+  test_assign_count_value_grow_and_shrink();
   test_assign_range_preallocates_for_forward_iterators();
+  test_assign_range_from_random_access_iterators();
   test_assign_range_from_input_iterators();
   test_assign_initializer_list();
 }
@@ -668,7 +784,7 @@ void test_move_assignment_matrix() {
 
     REQUIRE(target.size() == source_size);
     for (std::size_t i{0}; i < source_size; ++i) {
-      REQUIRE(target[i].get_value() == static_cast<int>(i + 1));
+      REQUIRE(target[i].getValue() == static_cast<int>(i + 1));
     }
     REQUIRE((target.data() == source_data) == expect_heap_steal);
     REQUIRE(source.empty());
@@ -701,17 +817,17 @@ void test_move_assignment_balances_ctor_dtor() {
   u.push_back(Constructable{3});
 
   v = std::move(u);
-  expect_values(v, 2, 3);
+  EXPECT_VALUES(v, 2, 3);
 
   // Mirrors LLVM MoveAssignTest: after clearing the moved-from container, two
   // live elements remain in the destination.
   u.clear();
-  REQUIRE(Constructable::num_constructor_calls - std::size_t{2} ==
-          Constructable::num_destructor_calls);
+  REQUIRE(Constructable::numConstructorCalls - std::size_t{2} ==
+          Constructable::numDestructorCalls);
 
   v.clear();
-  REQUIRE(Constructable::num_constructor_calls ==
-          Constructable::num_destructor_calls);
+  REQUIRE(Constructable::numConstructorCalls ==
+          Constructable::numDestructorCalls);
 }
 
 // Adapted from LLVM MoveAssignTest.
@@ -720,43 +836,48 @@ TEST_CASE("SmallVectorTest::MoveAssignBalancesCtorDtor") {
   test_move_assignment_balances_ctor_dtor();
 }
 
-template <std::size_t SrcN, std::size_t DstN>
-void test_move_assignment_across_n_case(std::size_t source_size,
-                                        std::size_t target_size) {
-  SmallVector<Constructable, SrcN> source;
-  for (std::size_t i{0}; i < source_size; ++i) {
-    source.push_back(Constructable{static_cast<int>(i + 1)});
+template <std::size_t VN, std::size_t UN>
+void test_dual_move_assignment() {
+  Constructable::reset();
+  SmallVector<Constructable, VN> vector;
+  SmallVector<Constructable, UN> other_vector;
+  auto& V = vector;
+  auto& U = other_vector;
+  for (unsigned I = 0; I < 4; ++I) {
+    U.push_back(Constructable{static_cast<int>(I)});
   }
-  const Constructable* source_data = source.data();
-  const bool source_was_inline = source_size <= SrcN;
 
-  SmallVector<Constructable, DstN> target;
-  for (std::size_t i{0}; i < target_size; ++i) {
-    target.push_back(Constructable{static_cast<int>(100 + i)});
-  }
-  target = std::move(source);
+  const Constructable* OrigDataPtr = U.data();
 
-  REQUIRE(target.size() == source_size);
-  for (std::size_t i{0}; i < source_size; ++i) {
-    REQUIRE(target[i].get_value() == static_cast<int>(i + 1));
-  }
-  // Heap is stolen iff the source held a heap buffer.
-  REQUIRE((target.data() == source_data) == !source_was_inline);
-  REQUIRE(source.empty());
-  REQUIRE((source.data() == source_data) == source_was_inline);
+  V = std::move(U);
+
+  EXPECT_VALUES(V, 0, 1, 2, 3);
+
+  U.clear();
+  REQUIRE(Constructable::numConstructorCalls - std::size_t{4} ==
+          Constructable::numDestructorCalls);
+
+  // If the source vector was in small mode, the data pointer cannot be stolen.
+  REQUIRE((UN >= 4 || V.data() == OrigDataPtr));
+
+  V.clear();
+  REQUIRE(Constructable::numConstructorCalls ==
+          Constructable::numDestructorCalls);
+
+  REQUIRE(Constructable::numCopyConstructorCalls == 0);
 }
 
 // Adapted from LLVM DualSmallVectorsTest::MoveAssignment.
-// Covers the four small/big combinations across two different SBO capacities.
+// Mirrors the LLVM type-pair instantiations across distinct SBO capacities.
 TEST_CASE("SmallVectorTest::MoveAssignAcrossN") {
   // Small mode -> Small mode.
-  test_move_assignment_across_n_case<4, 4>(1, 1);
+  test_dual_move_assignment<4, 4>();
   // Small mode -> Big mode.
-  test_move_assignment_across_n_case<4, 2>(1, 4);
+  test_dual_move_assignment<4, 2>();
   // Big mode -> Small mode.
-  test_move_assignment_across_n_case<2, 4>(5, 1);
+  test_dual_move_assignment<2, 4>();
   // Big mode -> Big mode.
-  test_move_assignment_across_n_case<2, 2>(5, 6);
+  test_dual_move_assignment<2, 2>();
 }
 
 template <std::size_t SrcN, std::size_t DstN>
@@ -775,14 +896,14 @@ void test_move_assignment_across_n_accounting() {
   // Mirrors LLVM DualSmallVectorsTest::MoveAssignment: clearing the moved-from
   // container leaves the destination with the four elements alive.
   u.clear();
-  REQUIRE(Constructable::num_constructor_calls - std::size_t{4} ==
-          Constructable::num_destructor_calls);
+  REQUIRE(Constructable::numConstructorCalls - std::size_t{4} ==
+          Constructable::numDestructorCalls);
 
   v.clear();
-  REQUIRE(Constructable::num_constructor_calls ==
-          Constructable::num_destructor_calls);
+  REQUIRE(Constructable::numConstructorCalls ==
+          Constructable::numDestructorCalls);
   // Move-assign across SBO capacities must never copy elements.
-  REQUIRE(Constructable::num_copy_constructor_calls == 0);
+  REQUIRE(Constructable::numCopyConstructorCalls == 0);
 }
 
 // Adapted from LLVM DualSmallVectorsTest::MoveAssignment.
@@ -812,8 +933,8 @@ void test_const_accessors() {
   REQUIRE(const_vector.size() == std::size_t{2});
   REQUIRE_FALSE(const_vector.empty());
   REQUIRE(const_vector.data() != nullptr);
-  REQUIRE(const_vector[0].get_value() == 1);
-  REQUIRE(const_vector[1].get_value() == 2);
+  REQUIRE(const_vector[0].getValue() == 1);
+  REQUIRE(const_vector[1].getValue() == 2);
   REQUIRE(&const_vector[0] == const_vector.data());
   REQUIRE(&const_vector[1] == const_vector.data() + 1);
 }
@@ -832,12 +953,12 @@ void test_direct_vector_access() {
   REQUIRE(vector.size() == std::size_t{0});
   vector.reserve(4);
   REQUIRE(vector.capacity() >= std::size_t{4});
-  REQUIRE(Constructable::num_constructor_calls == 0);
+  REQUIRE(Constructable::numConstructorCalls == 0);
 
   make_sequence(vector, 1, 4);
-  expect_values(vector, 1, 2, 3, 4);
+  EXPECT_VALUES(vector, 1, 2, 3, 4);
   // LLVM DirectVectorTest: 4 temporaries + 4 in-place moves = 8 ctor calls.
-  REQUIRE(Constructable::num_constructor_calls == 8);
+  REQUIRE(Constructable::numConstructorCalls == 8);
 }
 
 // Adapted from LLVM DirectVectorTest.
@@ -983,27 +1104,41 @@ void test_initializer_list_constructor() {
   REQUIRE(heap_vector[1] == 5);
   REQUIRE(heap_vector[2] == 6);
   REQUIRE(heap_vector[3] == 7);
-
-  // Mirrors LLVM InitializerList: re-binding via `= { ... }` materializes a
-  // temporary and move-assigns it.
-  SmallVector<int, 2> rebind = {};
-  REQUIRE(rebind.empty());
-  rebind = {0, 0};
-  REQUIRE(rebind.size() == std::size_t{2});
-  REQUIRE(rebind[0] == 0);
-  REQUIRE(rebind[1] == 0);
-  rebind = {-1, -1};
-  REQUIRE(rebind.size() == std::size_t{2});
-  REQUIRE(rebind[0] == -1);
-  REQUIRE(rebind[1] == -1);
 }
 
-// Adapted from LLVM InitializerList.
-// dxu currently covers construction only, while assignment is covered in
-// AssignTest.
+// Covers the initializer-list constructor across empty/inline/heap capacities.
+// Initializer-list assignment (operator=) is covered by the InitializerList
+// port.
 TEST_CASE("SmallVectorTest::InitializerListConstructor") {
   test_initializer_list_constructor();
 }
+
+void test_initializer_list() {
+  SmallVector<int, 2> V1 = {};
+  REQUIRE(V1.empty());
+  V1 = {0, 0};
+  REQUIRE(V1.size() == std::size_t{2});
+  REQUIRE(V1[0] == 0);
+  REQUIRE(V1[1] == 0);
+  V1 = {-1, -1};
+  REQUIRE(V1.size() == std::size_t{2});
+  REQUIRE(V1[0] == -1);
+  REQUIRE(V1[1] == -1);
+
+  SmallVector<int, 2> V2 = {1, 2, 3, 4};
+  REQUIRE(V2.size() == std::size_t{4});
+  REQUIRE(V2[0] == 1);
+  REQUIRE(V2[1] == 2);
+  REQUIRE(V2[2] == 3);
+  REQUIRE(V2[3] == 4);
+  V2.assign({4});
+  REQUIRE(V2.size() == std::size_t{1});
+  REQUIRE(V2[0] == 4);
+}
+
+// Adapted from LLVM InitializerList.
+// dxu::SmallVector has no append/insert, so those trailing steps are omitted.
+TEST_CASE("SmallVectorTest::InitializerList") { test_initializer_list(); }
 
 void test_count_value_constructor() {
   SmallVector<int, 2> empty(0, 7);
@@ -1041,7 +1176,7 @@ void test_size_constructor() {
   REQUIRE(inline_vector.size() == N);
   REQUIRE(inline_vector.capacity() >= N);
   for (std::size_t i{0}; i < inline_vector.size(); ++i) {
-    REQUIRE(inline_vector[i].get_value() == 0);
+    REQUIRE(inline_vector[i].getValue() == 0);
     REQUIRE(&inline_vector[i] == inline_vector.data() + i);
   }
 
@@ -1050,7 +1185,7 @@ void test_size_constructor() {
   REQUIRE(heap_vector.size() == heap_size);
   REQUIRE(heap_vector.capacity() >= heap_size);
   for (std::size_t i{0}; i < heap_vector.size(); ++i) {
-    REQUIRE(heap_vector[i].get_value() == 0);
+    REQUIRE(heap_vector[i].getValue() == 0);
     REQUIRE(&heap_vector[i] == heap_vector.data() + i);
   }
 }
@@ -1091,14 +1226,14 @@ void test_at_accessors() {
   SmallVector<Constructable, N> vector;
   make_sequence(vector, 1, 2);
 
-  REQUIRE(vector.at(0).get_value() == 1);
-  REQUIRE(vector.at(1).get_value() == 2);
+  REQUIRE(vector.at(0).getValue() == 1);
+  REQUIRE(vector.at(1).getValue() == 2);
   REQUIRE(&vector.at(0) == &vector[0]);
   REQUIRE(&vector.at(1) == &vector[1]);
 
   const SmallVector<Constructable, N>& const_vector = vector;
-  REQUIRE(const_vector.at(0).get_value() == 1);
-  REQUIRE(const_vector.at(1).get_value() == 2);
+  REQUIRE(const_vector.at(0).getValue() == 1);
+  REQUIRE(const_vector.at(1).getValue() == 2);
   REQUIRE(&const_vector.at(0) == &const_vector[0]);
   REQUIRE(&const_vector.at(1) == &const_vector[1]);
 
@@ -1123,8 +1258,8 @@ void test_reserve_branches() {
 
   vector.reserve(before_capacity + 3);
   REQUIRE(vector.capacity() >= before_capacity + 3);
-  REQUIRE(vector[0].get_value() == 1);
-  REQUIRE(vector[1].get_value() == 2);
+  REQUIRE(vector[0].getValue() == 1);
+  REQUIRE(vector[1].getValue() == 2);
 
   const Constructable* after_grow = vector.data();
   const std::size_t after_grow_capacity = vector.capacity();
@@ -1153,7 +1288,7 @@ void test_reserve_after_clear_on_heap_storage() {
   REQUIRE(vector.capacity() >= heap_capacity + 3);
 
   vector.push_back(Constructable{42});
-  expect_values(vector, 42);
+  EXPECT_VALUES(vector, 42);
 }
 
 TEST_CASE("SmallVectorTest::ReserveTest") {
@@ -1189,7 +1324,7 @@ void test_resize_fill_shrink() {
   make_sequence(vector, 1, 3);
   vector.resize(1, Constructable{77});
 
-  expect_values(vector, 1);
+  EXPECT_VALUES(vector, 1);
 }
 
 TEST_CASE("SmallVectorTest::ResizeFillShrinkTest") {
@@ -1220,7 +1355,7 @@ void test_copy_constructor() {
   SmallVector<Constructable, N> inline_copy{inline_source};
 
   REQUIRE(inline_copy.size() == std::size_t{1});
-  REQUIRE(inline_copy[0].get_value() == 1);
+  REQUIRE(inline_copy[0].getValue() == 1);
   REQUIRE(inline_copy.data() != inline_source.data());
 
   SmallVector<Constructable, N> heap_source;
@@ -1230,13 +1365,31 @@ void test_copy_constructor() {
   REQUIRE(heap_copy.size() == heap_source.size());
   REQUIRE(heap_copy.data() != heap_source.data());
   for (std::size_t i{0}; i < heap_copy.size(); ++i) {
-    REQUIRE(heap_copy[i].get_value() == heap_source[i].get_value());
+    REQUIRE(heap_copy[i].getValue() == heap_source[i].getValue());
     REQUIRE(&heap_copy[i] == heap_copy.data() + i);
   }
 }
 
 TEST_CASE("SmallVectorTest::CopyConstructorTest") {
   RUN_TEST_CAPACITY(test_copy_constructor);
+}
+
+void test_copy_constructor_across_capacity() {
+  SmallVector<Constructable, 1> source;
+  make_sequence(source, 1, 3);
+  const Constructable* source_data = source.data();
+
+  SmallVector<Constructable, 4> copy{source};
+
+  REQUIRE(copy.size() == source.size());
+  REQUIRE(copy.data() != source_data);
+  REQUIRE(source.data() == source_data);
+  EXPECT_VALUES(copy, 1, 2, 3);
+  EXPECT_VALUES(source, 1, 2, 3);
+}
+
+TEST_CASE("SmallVectorTest::CopyConstructorAcrossCapacity") {
+  test_copy_constructor_across_capacity();
 }
 
 template <std::size_t N>
@@ -1299,7 +1452,7 @@ void test_assign_empty_source() {
 
   target.assign(source.begin(), source.end());
 
-  expect_empty(target);
+  EXPECT_EMPTY(target);
   REQUIRE(target.data() == before);
   REQUIRE(target.capacity() == before_capacity);
 }
@@ -1324,12 +1477,12 @@ void test_assign_self() {
   vector.assign(vector);
   REQUIRE(vector.data() == before);
   REQUIRE(vector.capacity() == before_capacity);
-  expect_values(vector, 1, 2, 3);
+  EXPECT_VALUES(vector, 1, 2, 3);
 
   vector.operator=(vector);
   REQUIRE(vector.data() == before);
   REQUIRE(vector.capacity() == before_capacity);
-  expect_values(vector, 1, 2, 3);
+  EXPECT_VALUES(vector, 1, 2, 3);
 }
 
 TEST_CASE("SmallVectorTest::AssignSelf") { test_assign_self(); }
@@ -1360,7 +1513,7 @@ void test_move_assignment_same_capacity() {
 
   REQUIRE(target.size() == std::size_t{3});
   REQUIRE(target.data() == source_data);
-  expect_values(target, 1, 2, 3);
+  EXPECT_VALUES(target, 1, 2, 3);
   REQUIRE(source.empty());
   REQUIRE(source.data() != source_data);
   REQUIRE(source.capacity() == std::size_t{2});
@@ -1381,7 +1534,7 @@ void test_assign_move_from_inline_storage_across_capacity() {
   target.assign(std::move(source));
 
   REQUIRE(target.size() == std::size_t{1});
-  REQUIRE(target[0].get_value() == 1);
+  REQUIRE(target[0].getValue() == 1);
   REQUIRE(target.data() != source_data);
   REQUIRE(source.empty());
   REQUIRE(source.data() == source_data);
@@ -1399,7 +1552,7 @@ void test_assign_move_steals_heap_storage_across_capacity() {
 
   REQUIRE(target.size() == std::size_t{4});
   for (std::size_t i{0}; i < target.size(); ++i) {
-    REQUIRE(target[i].get_value() == static_cast<int>(i + 1));
+    REQUIRE(target[i].getValue() == static_cast<int>(i + 1));
   }
   REQUIRE(target.data() == source_data);
   REQUIRE(source.empty());
@@ -1417,7 +1570,7 @@ void test_assign_move_self() {
 
   REQUIRE(vector.data() == before);
   REQUIRE(vector.capacity() == before_capacity);
-  expect_values(vector, 1, 2, 3);
+  EXPECT_VALUES(vector, 1, 2, 3);
 }
 
 TEST_CASE("SmallVectorTest::AssignMove") {
@@ -1439,7 +1592,7 @@ void test_move_constructor_from_inline_storage() {
 
   REQUIRE(moved.size() == inline_size);
   for (std::size_t i{0}; i < inline_size; ++i) {
-    REQUIRE(moved[i].get_value() == static_cast<int>(i + 1));
+    REQUIRE(moved[i].getValue() == static_cast<int>(i + 1));
   }
   REQUIRE(moved.data() != source_data);
   REQUIRE(source.empty());
@@ -1459,7 +1612,7 @@ void test_move_constructor_steals_heap_storage() {
   REQUIRE(moved.data() == source_data);
   REQUIRE(moved.size() == N + 3);
   for (std::size_t i{0}; i < moved.size(); ++i) {
-    REQUIRE(moved[i].get_value() == static_cast<int>(i + 1));
+    REQUIRE(moved[i].getValue() == static_cast<int>(i + 1));
   }
   REQUIRE(source.empty());
   REQUIRE(source.data() != source_data);
@@ -1478,7 +1631,7 @@ void test_move_constructor_from_inline_storage_across_capacity() {
   SmallVector<Constructable, 4> moved{std::move(source)};
 
   REQUIRE(moved.size() == std::size_t{1});
-  REQUIRE(moved[0].get_value() == 1);
+  REQUIRE(moved[0].getValue() == 1);
   REQUIRE(moved.data() != source_data);
   REQUIRE(source.empty());
   REQUIRE(source.data() == source_data);
@@ -1494,7 +1647,7 @@ void test_move_constructor_steals_heap_storage_across_capacity() {
 
   REQUIRE(moved.size() == std::size_t{4});
   for (std::size_t i{0}; i < moved.size(); ++i) {
-    REQUIRE(moved[i].get_value() == static_cast<int>(i + 1));
+    REQUIRE(moved[i].getValue() == static_cast<int>(i + 1));
   }
   REQUIRE(moved.data() == source_data);
   REQUIRE(source.empty());
@@ -1517,7 +1670,7 @@ void test_move_assignment_from_inline_storage_across_capacity() {
   target = std::move(source);
 
   REQUIRE(target.size() == std::size_t{1});
-  REQUIRE(target[0].get_value() == 1);
+  REQUIRE(target[0].getValue() == 1);
   REQUIRE(target.data() != source_data);
   REQUIRE(source.empty());
   REQUIRE(source.data() == source_data);
@@ -1535,7 +1688,7 @@ void test_move_assignment_steals_heap_storage_across_capacity() {
 
   REQUIRE(target.size() == std::size_t{4});
   for (std::size_t i{0}; i < target.size(); ++i) {
-    REQUIRE(target[i].get_value() == static_cast<int>(i + 1));
+    REQUIRE(target[i].getValue() == static_cast<int>(i + 1));
   }
   REQUIRE(target.data() == source_data);
   REQUIRE(source.empty());
@@ -1563,11 +1716,11 @@ void test_swap_small_and_big() {
 
   REQUIRE(small.size() == N + 3);
   for (std::size_t i{0}; i < small.size(); ++i) {
-    REQUIRE(small[i].get_value() == static_cast<int>(7 + i));
+    REQUIRE(small[i].getValue() == static_cast<int>(7 + i));
   }
   REQUIRE(small.data() == big_data);
 
-  expect_values(big, 1, 2);
+  EXPECT_VALUES(big, 1, 2);
 }
 
 void test_swap_self() {
@@ -1578,7 +1731,7 @@ void test_swap_self() {
   vector.swap(vector);
 
   REQUIRE(vector.data() == before);
-  expect_values(vector, 1, 2, 3);
+  EXPECT_VALUES(vector, 1, 2, 3);
 }
 
 TEST_CASE("SmallVectorTest::SwapAdditionalCases") {
