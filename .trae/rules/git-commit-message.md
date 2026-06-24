@@ -1,6 +1,6 @@
 ---
 alwaysApply: false
-description: Git Commit Message Rules
+description: Git commit message
 scene: git_message
 ---
 - Use English.

@@ -76,4 +76,4 @@ message("        CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
 message("      PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
 
 ## Generate version.h
-configure_file(include/dxu/version.h.in include/dxu/version.h ESCAPE_QUOTES)
+configure_file(include/dxu/version.h.in ${DXU_CONFIG_EXPORT_DIR}/dxu/version.h ESCAPE_QUOTES)

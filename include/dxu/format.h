@@ -68,49 +68,38 @@ inline constexpr char NumToHex(uint8_t num) {
   return num < 10 ? ('0' + num) : ('a' + num - 10);
 }
 
-inline std::string CharToHex(char c) {
-  return std::string{'\\', 'x', NumToHex(c >> 4), NumToHex(c & 0x0f)};
+// char to "\xhh"
+inline std::string CharToHex(uint8_t c) {
+  return {'\\', 'x', NumToHex(c >> 4), NumToHex(c & 0x0f)};
 }
 
-// 0 -> don't escape quotes, 1 -> escape ", 2 -> escape ', 3 -> both " & '
+/**
+ * @param escapeQuotes 0 -> don't escape quotes, 1 -> escape ",
+ *                     2 -> escape ', 3 -> both " & '
+ */
 template <class Appendable = std::string>
 void ToEscapedString(Appendable& t, char c, int escapeQuotes) {
-  if (c < 0x20) {
-    if (c == '\0') {
-      t += "\\0";  // 0x00 NUL
-    } else if (c == '\a') {
-      t += "\\a";  // 0x07 BEL
-    } else if (c == '\b') {
-      t += "\\b";  // 0x08 BS
-    } else if (c == '\t') {
-      t += "\\t";  // 0x09 TAB
-    } else if (c == '\n') {
-      t += "\\n";  // 0x0a LF
-    } else if (c == '\v') {
-      t += "\\v";  // 0x0b VT
-    } else if (c == '\f') {
-      t += "\\f";  // 0x0c FF
-    } else if (c == '\r') {
-      t += "\\r";  // 0x0d CR
-    } else if (c == '\x1b') {
-      t += "\\e";  // 0x1b ESC (\e is GNU extension)
-    } else {
-      t += CharToHex(c);  // \x01 - \x1f
+  if (static_cast<uint8_t>(c) - 0x20u < 0x5fu) {
+    // Hot path: printable ASCII [0x20, 0x7e]
+    if ((c == '"' && (escapeQuotes & 1)) || (c == '\'' && (escapeQuotes & 2)) ||
+        c == '\\') {
+      t += '\\';
     }
-  } else if (c == '"') {
-    if (escapeQuotes & 1) t += '\\';
     t += c;
-  } else if (c == '\'') {
-    if (escapeQuotes & 2) t += '\\';
-    t += c;
-  } else if (c == '\\') {
-    t += "\\\\";
-  } else if (c == 0x7f) {
-    t += "\\x7f";  // DEL
-  } else if (static_cast<uint8_t>(c) >= (uint8_t)0x80) {
-    t += CharToHex(c);  // \x81
   } else {
-    t += c;  // printable char
+    switch (c) {
+      case '\0': t += "\\0"; return;      // 0x00 NUL
+      case '\a': t += "\\a"; return;      // 0x07 BEL
+      case '\b': t += "\\b"; return;      // 0x08 BS
+      case '\t': t += "\\t"; return;      // 0x09 TAB
+      case '\n': t += "\\n"; return;      // 0x0a LF
+      case '\v': t += "\\v"; return;      // 0x0b VT
+      case '\f': t += "\\f"; return;      // 0x0c FF
+      case '\r': t += "\\r"; return;      // 0x0d CR
+      case '\x1b': t += "\\e"; return;    // 0x1b ESC (\e is GNU extension)
+      case '\x7f': t += "\\x7f"; return;  // 0x7f DEL
+      default: t += CharToHex(c);         // \x01-\x1f remainder, \x80-\xff
+    }
   }
 }
 

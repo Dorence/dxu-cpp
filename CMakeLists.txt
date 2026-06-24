@@ -3,19 +3,82 @@ project(dxu-cpp)
 
 ##---- Project Options ----##
 set(DXU_NAMESPACE "dxu" CACHE STRING "Namespace for this project")
+set(DXU_CONFIG_EXPORT_DIR "include" CACHE STRING
+  "Directory to export dxu/version.h, relative to CMAKE_CURRENT_BINARY_DIR")
 
 ##----- Compile Options -----##
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_options(-Wall -Wextra -Wpedantic)
-add_compile_options(-pthread)
+if(MSVC)
+  add_compile_options(
+    /W4          # rough analogue of -Wall -Wextra
+    /permissive- # disable MSVC language extensions, enforce standard C++
+  )
+else()
+  add_compile_options(
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wcast-align             # cast increases required alignment
+    -Wdouble-promotion       # implicit float-to-double promotion
+    -Wformat=2               # strict printf/scanf format checks
+    -Wimplicit-fallthrough   # missing break in switch
+    -Wmisleading-indentation # indentation vs control flow mismatch
+    -Wnon-virtual-dtor       # polymorphic class with non-virtual dtor
+    -Wnull-dereference       # null pointer dereference
+    -Wold-style-cast         # forbid C-style casts
+    -Woverloaded-virtual     # derived method hides a virtual
+    -Wshadow                 # shadowed identifier
+    -Wsign-compare           # signed/unsigned comparison
+    -Wundef                  # undefined macro in #if
+    -Wunused                 # unused vars/params/values/functions
+  )
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(
+      -Wduplicated-branches # if/else with identical bodies
+      -Wduplicated-cond     # repeated condition in if/else-if chain
+      -Wlogical-op          # suspicious logical operator usage
+      -Wuseless-cast        # cast to the same type
+    )
+  elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(
+      -Wextra-semi # redundant semicolon after a definition
+      -Wshadow-all # broader -Wshadow
+    )
+  endif()
+endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "" OR CMAKE_BUILD_TYPE STREQUAL "RD")
   set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 endif()
 message("[dxu] Build type: ${CMAKE_BUILD_TYPE}")
+
+if(MSVC)
+  add_compile_options(
+    /Zc:__cplusplus  # real __cplusplus
+    /Zc:preprocessor # use the conformant token-based preprocessor
+    /Zc:inline       # remove unreferenced inline functions/data
+    /Zc:wchar_t      # treat wchar_t as built-in
+    /Zc:forScope     # standard-conformant scope of for-loop variables
+    /utf-8           # interpret source and execution charset as UTF-8
+    /EHsc            # C++ exception, assume extern "C" noexcept
+    /GR              # enable RTTI
+    /nologo          # suppress startup banner
+  )
+else()
+  add_compile_options(-pthread)
+
+  if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(-fno-omit-frame-pointer)
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("-momit-leaf-frame-pointer" DXU_HAVE_OMIT_LEAF_FP)
+    if(DXU_HAVE_OMIT_LEAF_FP)
+      add_compile_options(-momit-leaf-frame-pointer)
+    endif()
+  endif()
+endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/dxu-version.cmake)
 

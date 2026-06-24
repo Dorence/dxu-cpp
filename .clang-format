@@ -1,9 +1,11 @@
 # Complete list of style options can be found at: 
 # https://clang.llvm.org/docs/ClangFormatStyleOptions.html
 ---
+# Ref: https://github.com/llvm/llvm-project/blob/llvmorg-21.1.8/clang/lib/Format/Format.cpp#L1731
 BasedOnStyle: Google
 AlignTrailingComments: true
 AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortCaseLabelsOnASingleLine: true
 ColumnLimit: 80
 DerivePointerAlignment: false
 # (v>=16) Insert a newline at end of file if missing.

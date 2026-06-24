@@ -86,7 +86,8 @@ NOINLINE TEST_CASE("Conversion::VectorToStringCustom") {
 }
 
 TEST_CASE("Conversion::CArrayToString") {
-  REQUIRE(CArrayToString((char*)nullptr, 0, ",", "{", "}") == "{}");
+  constexpr char* kNull = nullptr;
+  REQUIRE(CArrayToString(kNull, 0, ",", "{", "}") == "{}");
   int arr[] = {1, 2, 3};
   REQUIRE(CArrayToString(arr, 3) == "[1, 2, 3]");
   std::string s[] = {"a\txxx", "", "e", "\""};
