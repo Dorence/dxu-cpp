@@ -83,9 +83,7 @@ endif()
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/dxu-version.cmake)
 
 ##---- External Project Options ----##
-set(GIT_PROXY "http://sys-proxy-rd-relay.byted.org:8118" CACHE STRING "Github/Gitlab proxy")
-set(EXTPROJ_GIT_CONFIG "http.https://github.com.proxy=${GIT_PROXY} http.https://gitlab.com.proxy=${GIT_PROXY}"
-  CACHE STRING "ExternalProject_Add GIT_CONFIG")
+set(EXTPROJ_GIT_CONFIG "" CACHE STRING "ExternalProject_Add GIT_CONFIG")
 
 ##----- Tests -----##
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/catch2.cmake)
