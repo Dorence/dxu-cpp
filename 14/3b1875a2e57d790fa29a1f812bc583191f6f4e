@@ -1,0 +1,16 @@
+CMakeLists.txt
+  h_0edea1d180c192 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "143b1875a2e57d790fa29a1f812bc583191f6f4e",
+  "prompts": {},
+  "humans": {
+    "h_0edea1d180c192": {
+      "author": "Dorence Deng <dorencedeng@gmail.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
